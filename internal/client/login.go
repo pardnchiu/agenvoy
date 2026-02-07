@@ -18,8 +18,6 @@ import (
 
 var (
 	CopilotDefaultModel       = "gpt-4.1"
-	CopilotDefaultTokens      = 16384
-	CopilotDefaultTimeout     = 5 * time.Minute
 	GitHubDeviceCodeAPI       = "https://github.com/login/device/code"
 	GitHubOauthAccessTokenAPI = "https://github.com/login/oauth/access_token"
 	CopilotTokenURL           = "https://api.github.com/copilot_internal/v2/token"

@@ -51,41 +51,77 @@ func main() {
 		return
 	}
 
+	if os.Args[1] == "run" {
+		if len(os.Args) < 4 {
+			fmt.Println("Usage: go run cmd/cli/main.go run <skill_name> <input>")
+			os.Exit(1)
+		}
+
+		skillName := os.Args[2]
+		userInput := os.Args[3]
+
+		client, err := c.NewCopilot()
+		if err != nil {
+			slog.Error("failed to load Copilot token", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+
+		scanner := skill.NewScanner()
+		skillList, err := scanner.Scan()
+		if err != nil {
+			slog.Error("failed to scan skills", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+
+		targetSkill, ok := skillList.ByName[skillName]
+		if !ok {
+			slog.Error("skill not found", slog.String("name", skillName))
+			os.Exit(1)
+		}
+
+		ctx := context.Background()
+		if err := client.Execute(ctx, targetSkill, userInput, os.Stdout); err != nil {
+			slog.Error("failed to execute skill", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+		return
+	}
+
 	slog.Info("successfully loaded Copilot token",
 		slog.String("access_token", client.Token.AccessToken),
 		slog.String("token_type", client.Token.TokenType),
 		slog.String("scope", client.Token.Scope),
 		slog.Time("expires_at", client.Token.ExpiresAt))
 
-	if len(os.Args) < 3 || os.Args[1] != "input" {
-		slog.Error("usage: go run cmd/cli/main.go input \"your message\"")
-		os.Exit(1)
-	}
+	// if len(os.Args) < 3 || os.Args[1] != "input" {
+	// 	slog.Error("usage: go run cmd/cli/main.go input \"your message\"")
+	// 	os.Exit(1)
+	// }
 
-	userInput := os.Args[2]
-	ctx := context.Background()
-	messages := []c.Message{
-		{
-			Role:    "system",
-			Content: "You are a helpful assistant.",
-		},
-		{
-			Role:    "user",
-			Content: userInput,
-		},
-	}
+	// userInput := os.Args[2]
+	// ctx := context.Background()
+	// messages := []c.Message{
+	// 	{
+	// 		Role:    "system",
+	// 		Content: "You are a helpful assistant.",
+	// 	},
+	// 	{
+	// 		Role:    "user",
+	// 		Content: userInput,
+	// 	},
+	// }
 
-	resp, err := client.SendChat(ctx, messages, nil)
-	if err != nil {
-		slog.Error("failed to send chat",
-			slog.String("error", err.Error()))
-		os.Exit(1)
-	}
+	// resp, err := client.SendChat(ctx, messages, nil)
+	// if err != nil {
+	// 	slog.Error("failed to send chat",
+	// 		slog.String("error", err.Error()))
+	// 	os.Exit(1)
+	// }
 
-	if len(resp.Choices) > 0 {
-		choice := resp.Choices[0]
-		if content, ok := choice.Message.Content.(string); ok {
-			fmt.Println("Response:", content)
-		}
-	}
+	// if len(resp.Choices) > 0 {
+	// 	choice := resp.Choices[0]
+	// 	if content, ok := choice.Message.Content.(string); ok {
+	// 		fmt.Println("Response:", content)
+	// 	}
+	// }
 }
