@@ -10,8 +10,24 @@ import (
 
 type Scanner struct {
 	paths  []string
-	skills *SkillList
+	Skills *SkillList
 	mu     sync.RWMutex
+}
+
+type Skill struct {
+	Name        string
+	Description string
+	AbsPath     string
+	Path        string
+	Content     string
+	Body        string
+	Hash        string
+}
+
+type SkillList struct {
+	ByName map[string]*Skill
+	ByPath map[string]*Skill
+	Paths  []string
 }
 
 func NewScanner() *Scanner {
@@ -36,26 +52,31 @@ func NewScanner() *Scanner {
 		"/mnt/skills/examples",
 	}
 
-	return &Scanner{
-		paths:  paths,
-		skills: NewSkillList(),
+	scanner := &Scanner{
+		paths: paths,
 	}
+	scanner.Scan()
+
+	return scanner
 }
 
-func (l *Scanner) Scan() (*SkillList, error) {
-	list := NewSkillList()
-	list.Paths = l.paths
+func (s *Scanner) Scan() {
+	list := &SkillList{
+		ByName: make(map[string]*Skill),
+		ByPath: make(map[string]*Skill),
+		Paths:  s.paths,
+	}
 
 	// * concurrent scan path list
 	var wg sync.WaitGroup
 	skillChan := make(chan *Skill, 100)
-	errChan := make(chan error, len(l.paths))
-	for _, path := range l.paths {
+	errChan := make(chan error, len(s.paths))
+	for _, path := range s.paths {
 		wg.Add(1)
 
 		go func(dir string) {
 			defer wg.Done()
-			if err := l.scan(dir, skillChan); err != nil {
+			if err := s.scan(dir, skillChan); err != nil {
 				errChan <- fmt.Errorf("failed to scan %s: %w", dir, err)
 			}
 		}(path)
@@ -78,17 +99,16 @@ func (l *Scanner) Scan() (*SkillList, error) {
 	var errs []error
 	for err := range errChan {
 		errs = append(errs, err)
-		slog.Warn("scan error", "error", err)
+		slog.Warn("scan error",
+			slog.String("error", err.Error()))
 	}
 
-	l.mu.Lock()
-	l.skills = list
-	l.mu.Unlock()
-
-	return list, nil
+	s.mu.Lock()
+	s.Skills = list
+	s.mu.Unlock()
 }
 
-func (l *Scanner) scan(root string, skillChan chan<- *Skill) error {
+func (s *Scanner) scan(root string, skillChan chan<- *Skill) error {
 	// * path not exists
 	if _, err := os.Stat(root); os.IsNotExist(err) {
 		return nil
@@ -112,12 +132,23 @@ func (l *Scanner) scan(root string, skillChan chan<- *Skill) error {
 			continue
 		}
 
-		skill, err := parse(path)
+		skill, err := parser(path)
 		if err != nil {
+			slog.Warn("failed to parse skill",
+				slog.String("path", path),
+				slog.String("error", err.Error()))
 			continue
 		}
 		skillChan <- skill
 	}
 
 	return nil
+}
+
+func (s *Scanner) List() []string {
+	names := make([]string, 0, len(s.Skills.ByName))
+	for name := range s.Skills.ByName {
+		names = append(names, name)
+	}
+	return names
 }

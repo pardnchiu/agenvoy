@@ -22,10 +22,12 @@ var (
 	GitHubOauthAccessTokenAPI = "https://github.com/login/oauth/access_token"
 	CopilotTokenURL           = "https://api.github.com/copilot_internal/v2/token"
 	CopilotClientID           = "Iv1.b507a08c87ecfe98"
-	MaxToolIterations         = 20
+	MaxToolIterations         = 128
 )
 
-var ErrAuthorizationPending = fmt.Errorf("authorization pending") // pre declare error for ensuring padding wont cause login exit
+var (
+	ErrAuthorizationPending = fmt.Errorf("authorization pending") // * pre declare error for ensuring padding wont cause login exit
+)
 
 type GopilotDeviceCode struct {
 	DeviceCode      string `json:"device_code"`
@@ -35,7 +37,7 @@ type GopilotDeviceCode struct {
 	Interval        int    `json:"interval"`
 }
 
-func CopilotLogin(ctx context.Context, tokenPath string) (*CopilotToken, error) {
+func (c *CopilotAgent) Login(ctx context.Context) (*CopilotToken, error) {
 	code, _, err := utils.POSTForm[GopilotDeviceCode](ctx, nil, GitHubDeviceCodeAPI,
 		map[string]string{},
 		url.Values{
@@ -43,8 +45,8 @@ func CopilotLogin(ctx context.Context, tokenPath string) (*CopilotToken, error) 
 		})
 
 	expires := time.Now().Add(time.Duration(code.ExpiresIn) * time.Second)
-	fmt.Printf("[*] url:      %-42s\n", code.VerificationURI)
-	fmt.Printf("[*] code:     %-42s\n", code.UserCode)
+	fmt.Printf("[*] url:      %-36s\n", code.VerificationURI)
+	fmt.Printf("[*] code:     %-36s\n", code.UserCode)
 	fmt.Printf("[*] expires:  %-36s\n", expires.Format("2006-01-02 15:04:05"))
 	fmt.Print("[*] press Enter to open browser")
 
@@ -83,29 +85,17 @@ func CopilotLogin(ctx context.Context, tokenPath string) (*CopilotToken, error) 
 		case <-time.After(interval):
 		}
 
-		token, err = getAccessToken(ctx, client, code.DeviceCode)
+		token, err = c.getAccessToken(ctx, client, code.DeviceCode)
 		if err != nil {
+			// * waiting for authorize
 			if errors.Is(err, ErrAuthorizationPending) {
 				continue
 			}
 			return nil, err
 		}
-
-		path := filepath.Dir(tokenPath)
-		if err := os.MkdirAll(path, 0700); err != nil {
-			return nil, err
-		}
-
-		data, err := json.MarshalIndent(token, "", "  ")
-		if err != nil {
-			return nil, err
-		}
-
-		os.WriteFile(tokenPath, data, 0600)
-
 		return token, nil
 	}
-	return nil, fmt.Errorf("device code expired")
+	return nil, fmt.Errorf("failed to login: device code expired")
 }
 
 type GopilotAccessToken struct {
@@ -115,7 +105,7 @@ type GopilotAccessToken struct {
 	Error       string `json:"error"`
 }
 
-func getAccessToken(ctx context.Context, client *http.Client, deviceCode string) (*CopilotToken, error) {
+func (c *CopilotAgent) getAccessToken(ctx context.Context, client *http.Client, deviceCode string) (*CopilotToken, error) {
 	accessToken, _, err := utils.POSTForm[GopilotAccessToken](ctx, client, GitHubOauthAccessTokenAPI,
 		map[string]string{},
 		url.Values{
@@ -129,14 +119,32 @@ func getAccessToken(ctx context.Context, client *http.Client, deviceCode string)
 
 	switch accessToken.Error {
 	case "":
-		return &CopilotToken{
+		token := &CopilotToken{
 			AccessToken: accessToken.AccessToken,
 			TokenType:   accessToken.TokenType,
 			Scope:       accessToken.Scope,
-		}, nil
+		}
+
+		path := filepath.Dir(c.tokenDir)
+		if err := os.MkdirAll(path, 0700); err != nil {
+			return nil, fmt.Errorf("failed to create token directory: %w", err)
+		}
+
+		data, err := json.MarshalIndent(token, "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal token: %w", err)
+		}
+
+		err = os.WriteFile(c.tokenDir, data, 0600)
+		if err != nil {
+			return nil, fmt.Errorf("failed to save token: %w", err)
+		}
+		return token, nil
+
 	case "authorization_pending":
 		return nil, ErrAuthorizationPending
+
 	default:
-		return nil, fmt.Errorf("oauth error: %s", accessToken.Error)
+		return nil, fmt.Errorf("failed to get access token: %s", accessToken.Error)
 	}
 }

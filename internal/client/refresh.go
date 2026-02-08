@@ -14,7 +14,14 @@ type RefreshToken struct {
 	ExpiresAt int64  `json:"expires_at"`
 }
 
-func (c *CopilotAgent) refreshToken(ctx context.Context) error {
+func (c *CopilotAgent) checkExpires(ctx context.Context) error {
+	if c.Token == nil || time.Now().After(c.Token.ExpiresAt.Add(-60*time.Second)) {
+		return c.refresh(ctx)
+	}
+	return nil
+}
+
+func (c *CopilotAgent) refresh(ctx context.Context) error {
 	token, code, err := utils.GET[RefreshToken](ctx, nil, CopilotTokenURL, map[string]string{
 		"Authorization":         "token " + c.Token.AccessToken,
 		"Accept":                "application/json",
@@ -32,17 +39,10 @@ func (c *CopilotAgent) refreshToken(ctx context.Context) error {
 		return fmt.Errorf("failed to refresh token, status code: %d", code)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to refresh token: %w", err)
+		return err
 	}
 
 	c.Refresh = &token
 
-	return nil
-}
-
-func (c *CopilotAgent) checkAndRefresnToken(ctx context.Context) error {
-	if c.Token == nil || time.Now().After(c.Token.ExpiresAt.Add(-60*time.Second)) {
-		return c.refreshToken(ctx)
-	}
 	return nil
 }

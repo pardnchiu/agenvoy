@@ -45,20 +45,20 @@ type OpenAIOutput struct {
 }
 
 func (c *CopilotAgent) Execute(ctx context.Context, skill *skill.Skill, userInput string, output io.Writer) error {
+	if err := c.checkExpires(ctx); err != nil {
+		return err
+	}
+
 	if skill.Content == "" {
 		return fmt.Errorf("SKILL.md is empty: %s", skill.Path)
 	}
 
-	if err := c.checkAndRefresnToken(ctx); err != nil {
-		return err
-	}
-
-	exec, err := tools.NewExecutor(c.workPath)
+	exec, err := tools.NewExecutor(c.workDir)
 	if err != nil {
 		return fmt.Errorf("failed to create executor: %w", err)
 	}
 
-	systemPrompt := systemPrompt(c.workPath, skill)
+	systemPrompt := systemPrompt(c.workDir, skill)
 	messages := []Message{
 		{
 			Role:    "system",

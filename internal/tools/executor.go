@@ -4,8 +4,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 )
 
 type Tool struct {
@@ -53,21 +51,4 @@ func (e *Executor) Execute(name string, args json.RawMessage) (string, error) {
 	default:
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}
-}
-
-func (e *Executor) getPath(path string) string {
-	if filepath.IsAbs(path) {
-		return path
-	}
-	return filepath.Join(e.WorkPath, path)
-}
-
-func (e *Executor) readFile(path string) (string, error) {
-	fullPath := e.getPath(path)
-	data, err := os.ReadFile(fullPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read file %s: %w", path, err)
-	}
-	content := string(data)
-	return content, nil
 }

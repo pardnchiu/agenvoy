@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -21,49 +22,51 @@ type CopilotAgent struct {
 	httpClient *http.Client
 	Token      *CopilotToken
 	Refresh    *RefreshToken
-	workPath   string
-	tokenPath  string
+	workDir    string
+	tokenDir   string
 }
 
 func NewCopilot() (*CopilotAgent, error) {
 	workDir, _ := os.Getwd()
-
-	home, err := os.UserHomeDir()
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get user home dir: %w", err)
 	}
 
 	agent := &CopilotAgent{
 		httpClient: &http.Client{},
-		workPath:   workDir,
-		tokenPath:  filepath.Join(home, ".config", "go-agent-skills", "copilot_token.json"),
+		workDir:    workDir,
+		tokenDir:   filepath.Join(homeDir, ".config", "go-agent-skills", "copilot_token.json"),
 	}
 
 	var token *CopilotToken
 
-	data, err := os.ReadFile(agent.tokenPath)
+	data, err := os.ReadFile(agent.tokenDir)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			// * if is not exist, then login
+			// * if is not exist, then login, github copilot code expire in 900s
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 			defer cancel()
 
-			token, err = CopilotLogin(ctx, agent.tokenPath)
+			token, err = agent.Login(ctx)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to login copilot: %w", err)
 			}
 			agent.Token = token
 			return agent, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to get copilot token file: %w", err)
 	}
 
 	if err := json.Unmarshal(data, &token); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal copilot token: %w", err)
 	}
 	agent.Token = token
 
-	agent.checkAndRefresnToken(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	agent.checkExpires(ctx)
 
 	return agent, nil
 }

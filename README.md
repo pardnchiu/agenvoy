@@ -31,18 +31,6 @@
 - **Token Management**: Automatically handles token expiration and renewal to maintain authentication state
 - **Command-Line Interface**: Provides `list` and `run` commands to manage and execute skills
 
-### Supported Tools
-
-The skill runner supports the following tools for skill execution:
-
-- **list_files(path, recursive)**: List directory contents with optional recursive scanning
-- **glob_files(pattern)**: Find files matching glob patterns (e.g., `**/*.go`, `*.json`)
-- **search_content(pattern, file_pattern)**: Search text content within files using regex patterns
-- **write_file(path, content)**: Write or create files to disk
-- **run_command(command)**: Execute shell commands (git, go, npm, python3, etc.)
-
-> **Important**: When asked to generate files, skills must use the `write_file` tool to persist them to disk.
-
 ### Roadmap
 
 **Authentication:**

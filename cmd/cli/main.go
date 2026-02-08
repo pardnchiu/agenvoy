@@ -21,27 +21,22 @@ func main() {
 
 	if os.Args[1] == "list" {
 		scanner := skill.NewScanner()
-		skillList, err := scanner.Scan()
-		if err != nil {
-			slog.Error("failed to scan skills", slog.String("error", err.Error()))
-			os.Exit(1)
-		}
 
-		if len(skillList.ByName) == 0 {
+		if len(scanner.Skills.ByName) == 0 {
 			fmt.Println("No skills found")
 			fmt.Println("\nScanned paths:")
-			for _, path := range skillList.Paths {
+			for _, path := range scanner.Skills.Paths {
 				fmt.Printf("  - %s\n", path)
 			}
 			return
 		}
 
-		names := skillList.List()
+		names := scanner.List()
 		sort.Strings(names)
 
 		fmt.Printf("Found %d skill(s):\n\n", len(names))
 		for _, name := range names {
-			s := skillList.ByName[name]
+			s := scanner.Skills.ByName[name]
 			fmt.Printf("• %s\n", name)
 			if s.Description != "" {
 				fmt.Printf("  %s\n", s.Description)
@@ -67,13 +62,7 @@ func main() {
 		}
 
 		scanner := skill.NewScanner()
-		skillList, err := scanner.Scan()
-		if err != nil {
-			slog.Error("failed to scan skills", slog.String("error", err.Error()))
-			os.Exit(1)
-		}
-
-		targetSkill, ok := skillList.ByName[skillName]
+		targetSkill, ok := scanner.Skills.ByName[skillName]
 		if !ok {
 			slog.Error("skill not found", slog.String("name", skillName))
 			os.Exit(1)

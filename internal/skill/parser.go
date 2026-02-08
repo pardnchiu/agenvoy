@@ -20,7 +20,7 @@ var (
 	descRegex   = regexp.MustCompile(`(?m)^description:\s*(.+)$`)
 )
 
-func parse(path string) (*Skill, error) {
+func parser(path string) (*Skill, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, fmt.Errorf("faiel to get path: %w", err)

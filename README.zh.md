@@ -31,18 +31,6 @@
 - **Token 管理**：自動處理 token 過期與更新，確保認證狀態持續有效
 - **命令列介面**：提供 `list` 與 `run` 指令來管理與執行 skill
 
-### 支援的工具
-
-Skill runner 支援以下工具供 skill 執行時使用：
-
-- **list_files(path, recursive)**：列出目錄內容，可選擇遞迴掃描
-- **glob_files(pattern)**：依 glob 模式尋找檔案（如 `**/*.go`、`*.json`）
-- **search_content(pattern, file_pattern)**：使用正規表達式在檔案中搜尋文字內容
-- **write_file(path, content)**：寫入或建立檔案至磁碟
-- **run_command(command)**：執行 shell 指令（git、go、npm、python3 等）
-
-> **重要**：當被要求產生檔案時，skill 必須使用 `write_file` 工具將它們儲存到磁碟。
-
 ### 開發路線圖
 
 **認證機制：**
