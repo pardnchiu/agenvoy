@@ -57,27 +57,6 @@
   {
     "type": "function",
     "function": {
-      "name": "search_content",
-      "description": "在檔案內容中搜尋模式。返回符合的行及其檔案路徑和行號。",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "pattern": {
-            "type": "string",
-            "description": "要搜尋的文字或正規表示式模式"
-          },
-          "file_pattern": {
-            "type": "string",
-            "description": "可選的 glob 模式以篩選檔案（例如 '*.go'）"
-          }
-        },
-        "required": ["pattern"]
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
       "name": "write_file",
       "description": "將內容寫入檔案。如果檔案不存在則建立，如果存在則覆寫。",
       "parameters": {
@@ -93,6 +72,27 @@
           }
         },
         "required": ["path", "content"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "search_content",
+      "description": "在檔案內容中搜尋模式。返回符合的行及其檔案路徑和行號。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "要搜尋的文字或正規表示式模式"
+          },
+          "file_pattern": {
+            "type": "string",
+            "description": "可選的 glob 模式以篩選檔案（例如 '*.go'）"
+          }
+        },
+        "required": ["pattern"]
       }
     }
   },

@@ -2,16 +2,22 @@ package client
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/manifoldco/promptui"
 	"github.com/pardnchiu/go-agent-skills/internal/skill"
 	"github.com/pardnchiu/go-agent-skills/internal/tools"
 	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
+
+//go:embed sysprompt.md
+var sysPrompt string
 
 var (
 	CopilotChatAPI = "https://api.githubcopilot.com/chat/completions"
@@ -44,7 +50,7 @@ type OpenAIOutput struct {
 	} `json:"error,omitempty"`
 }
 
-func (c *CopilotAgent) Execute(ctx context.Context, skill *skill.Skill, userInput string, output io.Writer) error {
+func (c *CopilotAgent) Execute(ctx context.Context, skill *skill.Skill, userInput string, output io.Writer, allowAll bool) error {
 	if err := c.checkExpires(ctx); err != nil {
 		return err
 	}
@@ -87,6 +93,44 @@ func (c *CopilotAgent) Execute(ctx context.Context, skill *skill.Skill, userInpu
 
 			for _, e := range choice.Message.ToolCalls {
 				fmt.Printf("[*] Tool: %s\n", e.Function.Name)
+
+				if !allowAll {
+					var args map[string]any
+					if err := json.Unmarshal([]byte(e.Function.Arguments), &args); err == nil {
+						fmt.Printf("\033[90m──────────────────────────────────────────────────\n")
+						for k, v := range args {
+							fmt.Printf("- %s: %v\n", k, v)
+						}
+					} else {
+						fmt.Printf("\033[90m──────────────────────────────────────────────────\n")
+						fmt.Printf("- %s\n", e.Function.Arguments)
+					}
+					prompt := promptui.Select{
+						Label: "Continue?",
+						Items: []string{
+							"Yes",
+							"Cancel",
+						},
+						Size:         2,
+						HideSelected: true,
+					}
+
+					idx, _, err := prompt.Run()
+					if err != nil {
+						fmt.Printf("[x] Prompt error: %v\n", err)
+						continue
+					}
+
+					if idx == 1 {
+						fmt.Printf("[x] User cancelled\n")
+						messages = append(messages, Message{
+							Role:       "tool",
+							Content:    "User cancelled",
+							ToolCallID: e.ID,
+						})
+						continue
+					}
+				}
 
 				result, err := exec.Execute(e.Function.Name, json.RawMessage(e.Function.Arguments))
 				if err != nil {
@@ -145,24 +189,18 @@ func (c *CopilotAgent) sendChat(ctx context.Context, messages []Message, toolDef
 
 func systemPrompt(workPath string, skill *skill.Skill) string {
 	content := skill.Content
+
 	for _, prefix := range []string{"scripts/", "templates/", "assets/"} {
-		resolved := filepath.Join(skill.Path, prefix) + string(filepath.Separator)
-		resolved = filepath.Clean(resolved) + string(filepath.Separator)
-		content = strings.ReplaceAll(skill.Content, prefix, resolved)
+		resolved := filepath.Join(skill.Path, prefix)
+
+		if _, err := os.Stat(resolved); err == nil {
+			content = strings.ReplaceAll(content, prefix, resolved+string(filepath.Separator))
+		}
 	}
-	return `你可以使用以下工具來與檔案系統互動：
-- read_file(path): 讀取檔案內容
-- list_files(path, recursive): 列出目錄內容
-- glob_files(pattern): 依模式尋找檔案
-- write_file(path, content): 寫入/建立檔案
 
-工作目錄：` + workPath + `
-技能目錄：` + skill.Path + `
-
-關鍵：以下技能指令中的任何相對路徑都必須相對於技能目錄來解析。
-重要：當被要求產生檔案時，你必須使用 write_file 工具將它們儲存到磁碟。
-
----
-
-` + content
+	return strings.NewReplacer(
+		"{{.WorkPath}}", workPath,
+		"{{.SkillPath}}", skill.Path,
+		"{{.Content}}", content,
+	).Replace(sysPrompt)
 }

@@ -1,137 +1,163 @@
 package tools
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"time"
 )
 
-func (e *Executor) getFullPath(path string) string {
-	if filepath.IsAbs(path) {
-		return path
-	}
-	return filepath.Join(e.WorkPath, path)
-}
+var (
+// * template allow all for testing
+// disallowed = regexp.MustCompile(`[;&|` + "`" + `$(){}!<>\\]`)
+)
 
-func (e *Executor) isExclude(path string) bool {
-	for _, pattern := range e.Exclude {
-		matched, _ := filepath.Match(pattern, filepath.Base(path))
-		if matched {
-			return true
-		}
-
-		if strings.Contains(path, "/"+pattern+"/") ||
-			strings.HasPrefix(path, pattern+"/") {
-			return true
-		}
-	}
-	return false
-}
-
-func (e *Executor) readFile(path string) (string, error) {
-	fullPath := e.getFullPath(path)
-
-	if e.isExclude(fullPath) {
-		return "", fmt.Errorf("path is excluded: %s", path)
+func (e *Executor) runCommand(command string) (string, error) {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return "", fmt.Errorf("failed to run command: command is empty")
 	}
 
-	data, err := os.ReadFile(fullPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read file (%s): %w", path, err)
-	}
-	return string(data), nil
-}
+	// * template allow all for testing
+	// if disallowed.MatchString(command) {
+	// 	return "", fmt.Errorf("failed to run command: disallowed characters")
+	// }
 
-func (e *Executor) listFiles(path string, recursive bool) (string, error) {
-	fullPath := e.getFullPath(path)
+	hasShellOps := strings.ContainsAny(command, "|><&")
 
-	var result strings.Builder
-	if recursive {
-		err := filepath.Walk(fullPath, func(p string, info os.FileInfo, err error) error {
-			if err != nil {
-				slog.Warn("failed to access path",
-					slog.String("error", err.Error()))
-				return nil
-			}
+	var binary string
+	var args []string
 
-			if e.isExclude(p) {
-				if info.IsDir() {
-					return filepath.SkipDir
-				}
-				return nil
-			}
+	if hasShellOps {
+		binary = "sh"
+		args = []string{"-c", command}
 
-			relPath, err := filepath.Rel(fullPath, p)
-			if err != nil {
-				slog.Warn("failed to get relative path",
-					slog.String("error", err.Error()))
-				return nil
-			}
-			if relPath == "." {
-				return nil
-			}
-			if strings.HasPrefix(filepath.Base(p), ".") && info.IsDir() {
-				return filepath.SkipDir
-			}
-			if info.IsDir() {
-				result.WriteString(relPath + "/\n")
-			} else {
-				result.WriteString(relPath + "\n")
-			}
-			return nil
-		})
-		if err != nil {
-			return "", fmt.Errorf("failed to walk directory (%s): %w", path, err)
+		firstCmd := strings.Fields(command)[0]
+		if !e.AllowedCommand[filepath.Base(firstCmd)] {
+			return "", fmt.Errorf("failed to run command: %s is not allowed", firstCmd)
 		}
 	} else {
-		entries, err := os.ReadDir(fullPath)
-		if err != nil {
-			return "", fmt.Errorf("failed to read directory (%s): %w", path, err)
-		}
-		for _, entry := range entries {
-			entryPath := filepath.Join(fullPath, entry.Name())
-			if e.isExclude(entryPath) {
-				continue
-			}
+		args = strings.Fields(command)
+		binary = filepath.Base(args[0])
 
-			if entry.IsDir() {
-				result.WriteString(entry.Name() + "/\n")
-			} else {
-				result.WriteString(entry.Name() + "\n")
-			}
+		if !e.AllowedCommand[binary] {
+			return "", fmt.Errorf("failed to run command: %s is not allowed", binary)
+		}
+
+		if binary == "rm" {
+			return e.moveToTrash(args[1:])
 		}
 	}
 
-	return result.String(), nil
+	// TODO: need to change to dynamic timeout based on command complexity
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	var cmd *exec.Cmd
+	if hasShellOps {
+		cmd = exec.CommandContext(ctx, binary, args...)
+	} else {
+		cmd = exec.CommandContext(ctx, args[0], args[1:]...)
+	}
+	cmd.Dir = e.WorkPath
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Sprintf("%s\nError: %s", string(output), err.Error()), nil
+	}
+
+	return string(output), nil
 }
 
-// * just fit one level of glob pattern
-// TODO: need to do more work to support complex glob patterns
-func (e *Executor) globFiles(pattern string) (string, error) {
+func (e *Executor) moveToTrash(args []string) (string, error) {
+	trashPath := filepath.Join(e.WorkPath, ".Trash")
+	os.MkdirAll(trashPath, 0755)
+
+	var moved []string
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+		src := filepath.Join(e.WorkPath, filepath.Clean(arg))
+		name := filepath.Base(arg)
+		dst := filepath.Join(trashPath, name)
+
+		if _, err := os.Stat(dst); err == nil {
+			ext := filepath.Ext(name)
+			dst = filepath.Join(trashPath, fmt.Sprintf("%s_%s%s",
+				strings.TrimSuffix(name, ext),
+				time.Now().Format("20060102_150405"),
+				ext))
+		}
+
+		if err := os.Rename(src, dst); err == nil {
+			moved = append(moved, arg)
+		}
+	}
+	return fmt.Sprintf("Successfully moved to .Trash: %s", strings.Join(moved, ", ")), nil
+}
+
+func (e *Executor) searchContent(pattern, filePattern string) (string, error) {
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return "", fmt.Errorf("failed to compile regex pattern (%s): %w", pattern, err)
+	}
+
 	var result strings.Builder
-	err := filepath.WalkDir(e.WorkPath, func(path string, d os.DirEntry, err error) error {
+
+	err = filepath.Walk(e.WorkPath, func(path string, d os.FileInfo, err error) error {
 		if err != nil {
 			slog.Warn("failed to access path",
 				slog.String("error", err.Error()))
 			return nil
 		}
 
-		if e.isExclude(path) {
-			if d.IsDir() {
-				return filepath.SkipDir
-			}
+		if strings.HasPrefix(filepath.Base(path), ".") {
 			return nil
 		}
 
-		if d.IsDir() && strings.HasPrefix(d.Name(), ".") && path != e.WorkPath {
-			return filepath.SkipDir
-		}
 		if d.IsDir() {
 			return nil
 		}
 
+		ext := filepath.Ext(path)
+		exts := map[string]bool{
+			".exe":   true,
+			".bin":   true,
+			".so":    true,
+			".dylib": true,
+			".dll":   true,
+			".o":     true,
+			".a":     true,
+		}
+		if exts[ext] {
+			return nil
+		}
+
+		if filePattern != "" {
+			matched, err := filepath.Match(filePattern, filepath.Base(path))
+			if err != nil {
+				slog.Warn("failed to match pattern",
+					slog.String("error", err.Error()))
+			}
+			if !matched {
+				return nil
+			}
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			slog.Warn("failed to read file during search",
+				slog.String("error", err.Error()))
+			return nil
+		}
+
+		lines := strings.Split(string(data), "\n")
 		relPath, err := filepath.Rel(e.WorkPath, path)
 		if err != nil {
 			slog.Warn("failed to get relative path",
@@ -139,28 +165,9 @@ func (e *Executor) globFiles(pattern string) (string, error) {
 			return nil
 		}
 
-		matched, err := filepath.Match(pattern, relPath)
-		if err != nil {
-			slog.Warn("failed to match pattern",
-				slog.String("error", err.Error()))
-			return nil
-		}
-		if matched {
-			result.WriteString(relPath + "\n")
-			return nil
-		}
-
-		if strings.Contains(pattern, "**") {
-			parts := strings.SplitN(pattern, "**", 2)
-			prefix := parts[0]
-			suffix := strings.TrimPrefix(parts[1], "/")
-			if strings.HasPrefix(relPath, prefix) {
-				rest := relPath[len(prefix):]
-				if suffix == "" {
-					result.WriteString(relPath + "\n")
-				} else if matched, _ := filepath.Match(suffix, filepath.Base(rest)); matched {
-					result.WriteString(relPath + "\n")
-				}
+		for i, line := range lines {
+			if re.MatchString(line) {
+				result.WriteString(fmt.Sprintf("%s:%d: %s\n", relPath, i+1, strings.TrimSpace(line)))
 			}
 		}
 		return nil
@@ -173,19 +180,4 @@ func (e *Executor) globFiles(pattern string) (string, error) {
 		return fmt.Sprintf("No fils found: %s", pattern), nil
 	}
 	return result.String(), nil
-}
-
-func (e *Executor) writeFile(path, content string) (string, error) {
-	fullPath := e.getFullPath(path)
-
-	dir := filepath.Dir(fullPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create directory (%s): %w", path, err)
-	}
-
-	if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
-		return "", fmt.Errorf("failed to write file (%s): %w", path, err)
-	}
-
-	return fmt.Sprintf("Successfully wrote file: %s", path), nil
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 	"sort"
 
 	c "github.com/pardnchiu/go-agent-skills/internal/client"
@@ -47,13 +48,19 @@ func main() {
 	}
 
 	if os.Args[1] == "run" {
-		if len(os.Args) < 4 {
+		if len(os.Args) < 3 {
 			fmt.Println("Usage: go run cmd/cli/main.go run <skill_name> <input>")
 			os.Exit(1)
 		}
 
 		skillName := os.Args[2]
 		userInput := os.Args[3]
+		allowAll := false
+
+		// Check for --allow flag
+		if slices.Contains(os.Args[4:], "--allow") {
+			allowAll = true
+		}
 
 		client, err := c.NewCopilot()
 		if err != nil {
@@ -69,7 +76,7 @@ func main() {
 		}
 
 		ctx := context.Background()
-		if err := client.Execute(ctx, targetSkill, userInput, os.Stdout); err != nil {
+		if err := client.Execute(ctx, targetSkill, userInput, os.Stdout, allowAll); err != nil {
 			slog.Error("failed to execute skill", slog.String("error", err.Error()))
 			os.Exit(1)
 		}
