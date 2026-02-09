@@ -8,7 +8,7 @@
 [![license](https://img.shields.io/github/license/pardnchiu/go-agent-skills)](LICENSE)
 [![version](https://img.shields.io/github/v/tag/pardnchiu/go-agent-skills?label=release)](https://github.com/pardnchiu/go-agent-skills/releases)
 
-> A lightweight Go CLI tool that executes AI skills via GitHub Copilot authentication with a complete filesystem toolchain
+> A lightweight Go CLI tool that executes AI skills via multiple agent backends with a complete filesystem toolchain
 
 ## Table of Contents
 
@@ -24,38 +24,37 @@
 
 ## Features
 
+- **Multi-Agent Backend Support**: Supports GitHub Copilot, OpenAI, Claude, Gemini, and Nvidia as AI agent backends with interactive selection menu
 - **GitHub Copilot Authentication**: Device code login flow with automatic token refresh mechanism
+- **API Key Authentication**: OpenAI, Claude, Gemini, and Nvidia authenticate directly via environment variable API keys
 - **Multi-Directory Skill Scanning**: Automatically scans `.claude/skills`, `.skills`, `.opencode/skills`, `.openai/skills`, `.codex/skills`, and `/mnt/skills/*` for available skills
-- **Skill Execution Engine**: Executes skills via Copilot Chat API with up to 128 tool call iterations
+- **Skill Execution Engine**: Unified Agent interface with up to 128 tool call iterations
 - **Complete Tool System**: Built-in `read_file`, `list_files`, `glob_files`, `write_file`, `search_content`, and `run_command` tools
-- **Safe Command Execution**: Command whitelist mechanism, `rm` automatically moves to `.Trash` instead of deleting, shell operator support
-- **Directory Exclusion**: Automatically excludes `.git`, `node_modules`, `vendor`, `dist`, and other directories
+- **Safe Command Execution**: Command whitelist mechanism, `rm` automatically moves to `.Trash` instead of deleting
 - **Interactive Confirmation**: Prompts user before each tool call, supports `--allow` flag to skip confirmation
-
-### Roadmap
-
-**Authentication:**
-- [x] Support GitHub Copilot authentication
-- [ ] Support Claude API key authentication
-- [ ] Support Claude device authentication
-- [ ] Support OpenAI API key authentication
-- [ ] Support OpenAI device authentication
 
 ## Architecture
 
 ```mermaid
 graph TB
     CLI[CLI Main] --> Scanner[Skill Scanner]
-    CLI --> Copilot[Copilot Agent]
+    CLI --> Select[Agent Selection]
+
+    Select --> Copilot[Copilot Agent]
+    Select --> OpenAI[OpenAI Agent]
+    Select --> Claude[Claude Agent]
+    Select --> Gemini[Gemini Agent]
+    Select --> Nvidia[Nvidia Agent]
 
     Scanner --> SkillList[Skill List]
     SkillList --> Parser[Skill Parser]
 
-    Copilot --> Login[Device Login]
-    Copilot --> Refresh[Token Refresh]
-    Copilot --> Exec[Skill Executor]
+    Copilot --> Exec[Shared Execute Flow]
+    OpenAI --> Exec
+    Claude --> Exec
+    Gemini --> Exec
+    Nvidia --> Exec
 
-    Exec --> API[Copilot Chat API]
     Exec --> ToolExec[Tool Executor]
 
     ToolExec --> ReadFile[read_file]
@@ -66,7 +65,8 @@ graph TB
     ToolExec --> RunCommand[run_command]
 
     style CLI fill:#e1f5ff
-    style Copilot fill:#ffe1e1
+    style Select fill:#f0e1ff
+    style Exec fill:#ffe1e1
     style Scanner fill:#e1ffe1
     style ToolExec fill:#fff3e1
 ```
@@ -76,7 +76,7 @@ graph TB
 ### Prerequisites
 
 - Go 1.20 or higher
-- GitHub Copilot subscription (for authentication)
+- At least one AI agent credential (GitHub Copilot subscription or API key)
 
 ### Install from Source
 
@@ -92,22 +92,22 @@ go build -o agent-skills cmd/cli/main.go
 go install github.com/pardnchiu/go-agent-skills/cmd/cli@latest
 ```
 
-## Usage
+### Environment Variables Setup
 
-### First-Time Authentication
-
-On first run, the GitHub Copilot device code login flow triggers automatically:
+Copy `.env.example` and fill in the corresponding API keys:
 
 ```bash
-./agent-skills
+cp .env.example .env
 ```
 
-The system displays:
-1. User Code
-2. Verification URI
-3. Expiration time
+```env
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
+NVIDIA_API_KEY=
+```
 
-Press Enter to open the browser automatically, then enter the user code to complete authentication. The token is stored at `~/.config/go-agent-skills/copilot_token.json`.
+## Usage
 
 ### List All Available Skills
 
@@ -139,6 +139,17 @@ Found 3 skill(s):
 ./agent-skills run <skill_name> <input>
 ```
 
+An agent selection menu appears after execution:
+
+```
+? Select Agent:
+  > GitHub Copilot
+    OpenAI
+    Claude
+    Gemini
+    Nvidia
+```
+
 Example:
 
 ```bash
@@ -148,6 +159,10 @@ Example:
 # Auto mode (skip confirmation)
 ./agent-skills run readme-generate "generate readme" --allow
 ```
+
+### GitHub Copilot First-Time Authentication
+
+When selecting GitHub Copilot without a stored token, the device code login flow triggers automatically. The token is stored at `~/.config/go-agent-skills/copilot_token.json`.
 
 ## CLI Reference
 
@@ -162,11 +177,15 @@ Example:
 |------|-------------|
 | `--allow` | Skip interactive confirmation prompts for tool calls |
 
-### Environment Variables
+### Supported Agents
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `HOME` | - | Used to locate token storage path `~/.config/go-agent-skills/` |
+| Agent | Authentication | Default Model | Environment Variable |
+|-------|---------------|---------------|---------------------|
+| GitHub Copilot | Device code login | `gpt-4.1` | - |
+| OpenAI | API Key | `gpt-5-nano` | `OPENAI_API_KEY` |
+| Claude | API Key | `claude-sonnet-4-5` | `ANTHROPIC_API_KEY` |
+| Gemini | API Key | `gemini-2.5-pro` | `GEMINI_API_KEY` |
+| Nvidia | API Key | `openai/gpt-oss-120b` | `NVIDIA_API_KEY` |
 
 ### Built-in Tools
 
@@ -195,112 +214,44 @@ Example:
 
 ## API Reference
 
-### Client Package (`internal/client`)
-
-#### `NewCopilot() (*CopilotAgent, error)`
-
-Create a new Copilot client instance. Automatically loads the stored token, or triggers the device code login flow if none exists.
-
-#### `(*CopilotAgent) Execute(ctx context.Context, skill *skill.Skill, userInput string, output io.Writer, allowAll bool) error`
-
-Execute the specified skill. Enters a tool call loop (up to 128 iterations), processing tool call requests from the API response in each iteration.
-
-**Parameters:**
-- `ctx`: Context instance
-- `skill`: Skill instance to execute
-- `userInput`: User input command or prompt
-- `output`: Output writer (typically `os.Stdout`)
-- `allowAll`: Set to `true` to skip tool call confirmation prompts
-
-#### `(*CopilotAgent) Login(ctx context.Context) (*CopilotToken, error)`
-
-Perform the GitHub Copilot device code login flow. Displays the verification URI and user code, opens the browser automatically, and polls until the user completes authorization or the device code expires.
-
-### Skill Package (`internal/skill`)
-
-#### `NewScanner() *Scanner`
-
-Create a new skill scanner instance and immediately perform scanning. Scans all configured paths concurrently using goroutines.
-
-#### `(*Scanner) List() []string`
-
-Get a list of all scanned skill names.
-
-### Tools Package (`internal/tools`)
-
-#### `NewExecutor(workPath string) (*Executor, error)`
-
-Create a new tool executor. Loads tool definitions from embedded `tools.json`, initializes the command whitelist and directory exclusion list.
-
-#### `(*Executor) Execute(name string, args json.RawMessage) (string, error)`
-
-Dispatch execution to the corresponding tool function by name.
-
-**Supported tools:** `read_file`, `list_files`, `glob_files`, `write_file`, `search_content`, `run_command`
-
-### Data Structures
-
-#### `CopilotToken`
+### Agent Interface (`internal/agents`)
 
 ```go
-type CopilotToken struct {
-    AccessToken string    `json:"access_token"`
-    TokenType   string    `json:"token_type"`
-    Scope       string    `json:"scope"`
-    ExpiresAt   time.Time `json:"expires_at"`
+type Agent interface {
+    Send(ctx context.Context, messages []Message, toolDefs []tools.Tool) (*OpenAIOutput, error)
+    Execute(ctx context.Context, skill *skill.Skill, userInput string, output io.Writer, allowAll bool) error
 }
 ```
 
-#### `Skill`
+All agents implement this unified interface. `Execute` is the high-level method handling the complete skill execution loop, while `Send` is the low-level method responsible for a single API call.
+
+### Shared Execution Flow
 
 ```go
-type Skill struct {
-    Name        string // Skill name
-    Description string // Skill description (parsed from SKILL.md frontmatter)
-    AbsPath     string // Absolute path
-    Path        string // Skill folder path
-    Content     string // Full file content
-    Body        string // Body content after frontmatter
-    Hash        string // SHA-256 content hash
-}
+func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skill, userInput string, output io.Writer, allowAll bool) error
 ```
 
-#### `SkillList`
+Unified skill execution engine iterating up to 128 tool call rounds. Each iteration parses tool call requests from the API response, executes the corresponding tools, and feeds results back to the agent.
+
+### Skill Scanner (`internal/skill`)
 
 ```go
-type SkillList struct {
-    ByName map[string]*Skill // Skills indexed by name
-    ByPath map[string]*Skill // Skills indexed by path
-    Paths  []string          // List of scanned paths
-}
+func NewScanner() *Scanner
 ```
 
-#### `Executor`
+Create a skill scanner and immediately perform concurrent scanning across all configured paths using goroutines.
+
+### Tool Executor (`internal/tools`)
 
 ```go
-type Executor struct {
-    WorkPath       string          // Working directory
-    Allowed        []string        // Allowed folders for operations
-    AllowedCommand map[string]bool // Command whitelist
-    Exclude        []string        // Excluded directory names
-    Tools          []Tool          // Tool definitions
-}
+func NewExecutor(workPath string) (*Executor, error)
 ```
 
-#### `Tool`
+Create a tool executor that loads tool definitions from embedded `tools.json` and initializes the command whitelist and directory exclusion list.
 
-```go
-type Tool struct {
-    Type     string       `json:"type"`
-    Function ToolFunction `json:"function"`
-}
+### HTTP Utilities (`internal/utils`)
 
-type ToolFunction struct {
-    Name        string          `json:"name"`
-    Description string          `json:"description"`
-    Parameters  json.RawMessage `json:"parameters"`
-}
-```
+Provides generic HTTP methods (`GET`, `POSTForm`, `POSTJson`) with automatic response deserialization using Go generics.
 
 ## License
 
