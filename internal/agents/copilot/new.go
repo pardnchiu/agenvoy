@@ -1,4 +1,4 @@
-package client
+package copilot
 
 import (
 	"context"
@@ -11,35 +11,35 @@ import (
 	"time"
 )
 
-type CopilotToken struct {
+type Token struct {
 	AccessToken string    `json:"access_token"`
 	TokenType   string    `json:"token_type"`
 	Scope       string    `json:"scope"`
 	ExpiresAt   time.Time `json:"expires_at"`
 }
 
-type CopilotAgent struct {
+type Agent struct {
 	httpClient *http.Client
-	Token      *CopilotToken
+	Token      *Token
 	Refresh    *RefreshToken
 	workDir    string
 	tokenDir   string
 }
 
-func NewCopilot() (*CopilotAgent, error) {
+func New() (*Agent, error) {
 	workDir, _ := os.Getwd()
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user home dir: %w", err)
 	}
 
-	agent := &CopilotAgent{
+	agent := &Agent{
 		httpClient: &http.Client{},
 		workDir:    workDir,
 		tokenDir:   filepath.Join(homeDir, ".config", "go-agent-skills", "copilot_token.json"),
 	}
 
-	var token *CopilotToken
+	var token *Token
 
 	data, err := os.ReadFile(agent.tokenDir)
 	if err != nil {

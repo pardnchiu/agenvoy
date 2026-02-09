@@ -1,4 +1,4 @@
-package client
+package agents
 
 import (
 	"context"
@@ -13,14 +13,13 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/pardnchiu/go-agent-skills/internal/skill"
 	"github.com/pardnchiu/go-agent-skills/internal/tools"
-	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
 
 //go:embed sysprompt.md
 var sysPrompt string
 
 var (
-	CopilotChatAPI = "https://api.githubcopilot.com/chat/completions"
+	MaxToolIterations = 128
 )
 
 type Message struct {
@@ -50,21 +49,26 @@ type OpenAIOutput struct {
 	} `json:"error,omitempty"`
 }
 
-func (c *CopilotAgent) Execute(ctx context.Context, skill *skill.Skill, userInput string, output io.Writer, allowAll bool) error {
-	if err := c.checkExpires(ctx); err != nil {
-		return err
-	}
+type Agent interface {
+	SendChat(ctx context.Context, messages []Message, toolDefs []tools.Tool) (*OpenAIOutput, error)
+	GetWorkDir() string
+}
+
+func Execute(ctx context.Context, agent Agent, skill *skill.Skill, userInput string, output io.Writer, allowAll bool) error {
+	// if err := c.checkExpires(ctx); err != nil {
+	// 	return err
+	// }
 
 	if skill.Content == "" {
 		return fmt.Errorf("SKILL.md is empty: %s", skill.Path)
 	}
 
-	exec, err := tools.NewExecutor(c.workDir)
+	exec, err := tools.NewExecutor(agent.GetWorkDir())
 	if err != nil {
 		return fmt.Errorf("failed to create executor: %w", err)
 	}
 
-	systemPrompt := systemPrompt(c.workDir, skill)
+	systemPrompt := systemPrompt(agent.GetWorkDir(), skill)
 	messages := []Message{
 		{
 			Role:    "system",
@@ -77,7 +81,7 @@ func (c *CopilotAgent) Execute(ctx context.Context, skill *skill.Skill, userInpu
 	}
 
 	for i := 0; i < MaxToolIterations; i++ {
-		resp, err := c.sendChat(ctx, messages, exec.Tools)
+		resp, err := agent.SendChat(ctx, messages, exec.Tools)
 		if err != nil {
 			return err
 		}
@@ -164,27 +168,6 @@ func (c *CopilotAgent) Execute(ctx context.Context, skill *skill.Skill, userInpu
 	}
 
 	return fmt.Errorf("exceeded max iterations (%d)", MaxToolIterations)
-}
-
-func (c *CopilotAgent) sendChat(ctx context.Context, messages []Message, toolDefs []tools.Tool) (*OpenAIOutput, error) {
-	result, _, error := utils.POSTJson[OpenAIOutput](ctx, c.httpClient, CopilotChatAPI, map[string]string{
-		"Authorization":         "Bearer " + c.Refresh.Token,
-		"Editor-Version":        "vscode/1.95.0",
-		"Editor-Plugin-Version": "copilot/1.245.0",
-		"Openai-Organization":   "github-copilot",
-	}, map[string]any{
-		"model":    CopilotDefaultModel,
-		"messages": messages,
-		"tools":    toolDefs,
-	})
-	if error != nil {
-		return nil, fmt.Errorf("API request: %w", error)
-	}
-	if result.Error != nil {
-		return nil, fmt.Errorf("API error: %s", result.Error.Message)
-	}
-
-	return &result, nil
 }
 
 func systemPrompt(workPath string, skill *skill.Skill) string {

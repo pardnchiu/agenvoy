@@ -1,4 +1,4 @@
-package client
+package copilot
 
 import (
 	"context"
@@ -9,20 +9,24 @@ import (
 	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
 
+var (
+	CopilotTokenAPI = "https://api.github.com/copilot_internal/v2/token"
+)
+
 type RefreshToken struct {
 	Token     string `json:"token"`
 	ExpiresAt int64  `json:"expires_at"`
 }
 
-func (c *CopilotAgent) checkExpires(ctx context.Context) error {
+func (c *Agent) checkExpires(ctx context.Context) error {
 	if c.Token == nil || time.Now().After(c.Token.ExpiresAt.Add(-60*time.Second)) {
 		return c.refresh(ctx)
 	}
 	return nil
 }
 
-func (c *CopilotAgent) refresh(ctx context.Context) error {
-	token, code, err := utils.GET[RefreshToken](ctx, nil, CopilotTokenURL, map[string]string{
+func (c *Agent) refresh(ctx context.Context) error {
+	token, code, err := utils.GET[RefreshToken](ctx, nil, CopilotTokenAPI, map[string]string{
 		"Authorization":         "token " + c.Token.AccessToken,
 		"Accept":                "application/json",
 		"Editor-Version":        "vscode/1.95.0",

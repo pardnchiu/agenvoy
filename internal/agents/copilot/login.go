@@ -1,4 +1,4 @@
-package client
+package copilot
 
 import (
 	"context"
@@ -17,19 +17,16 @@ import (
 )
 
 var (
-	CopilotDefaultModel       = "gpt-4.1"
-	GitHubDeviceCodeAPI       = "https://github.com/login/device/code"
-	GitHubOauthAccessTokenAPI = "https://github.com/login/oauth/access_token"
-	CopilotTokenURL           = "https://api.github.com/copilot_internal/v2/token"
-	CopilotClientID           = "Iv1.b507a08c87ecfe98"
-	MaxToolIterations         = 128
+	DeviceCodeAPI       = "https://github.com/login/device/code"
+	OauthAccessTokenAPI = "https://github.com/login/oauth/access_token"
+	ClientID            = "Iv1.b507a08c87ecfe98" // TODO: will replace with personal client id
 )
 
 var (
 	ErrAuthorizationPending = fmt.Errorf("authorization pending") // * pre declare error for ensuring padding wont cause login exit
 )
 
-type GopilotDeviceCode struct {
+type DeviceCode struct {
 	DeviceCode      string `json:"device_code"`
 	UserCode        string `json:"user_code"`
 	VerificationURI string `json:"verification_uri"`
@@ -37,11 +34,11 @@ type GopilotDeviceCode struct {
 	Interval        int    `json:"interval"`
 }
 
-func (c *CopilotAgent) Login(ctx context.Context) (*CopilotToken, error) {
-	code, _, err := utils.POSTForm[GopilotDeviceCode](ctx, nil, GitHubDeviceCodeAPI,
+func (c *Agent) Login(ctx context.Context) (*Token, error) {
+	code, _, err := utils.POSTForm[DeviceCode](ctx, nil, DeviceCodeAPI,
 		map[string]string{},
 		url.Values{
-			"client_id": {CopilotClientID},
+			"client_id": {ClientID},
 		})
 
 	expires := time.Now().Add(time.Duration(code.ExpiresIn) * time.Second)
@@ -76,7 +73,7 @@ func (c *CopilotAgent) Login(ctx context.Context) (*CopilotToken, error) {
 	interval := time.Duration(code.Interval) * time.Second
 	deadline := time.Now().Add(time.Duration(code.ExpiresIn) * time.Second)
 
-	var token *CopilotToken
+	var token *Token
 	client := &http.Client{} // * use the same http client for reuse connection
 	for time.Now().Before(deadline) {
 		select {
@@ -105,11 +102,11 @@ type GopilotAccessToken struct {
 	Error       string `json:"error"`
 }
 
-func (c *CopilotAgent) getAccessToken(ctx context.Context, client *http.Client, deviceCode string) (*CopilotToken, error) {
-	accessToken, _, err := utils.POSTForm[GopilotAccessToken](ctx, client, GitHubOauthAccessTokenAPI,
+func (c *Agent) getAccessToken(ctx context.Context, client *http.Client, deviceCode string) (*Token, error) {
+	accessToken, _, err := utils.POSTForm[GopilotAccessToken](ctx, client, OauthAccessTokenAPI,
 		map[string]string{},
 		url.Values{
-			"client_id":   {CopilotClientID},
+			"client_id":   {ClientID},
 			"device_code": {deviceCode},
 			"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
 		})
@@ -119,7 +116,7 @@ func (c *CopilotAgent) getAccessToken(ctx context.Context, client *http.Client, 
 
 	switch accessToken.Error {
 	case "":
-		token := &CopilotToken{
+		token := &Token{
 			AccessToken: accessToken.AccessToken,
 			TokenType:   accessToken.TokenType,
 			Scope:       accessToken.Scope,

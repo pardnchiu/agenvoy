@@ -8,12 +8,12 @@ import (
 	"slices"
 	"sort"
 
-	c "github.com/pardnchiu/go-agent-skills/internal/client"
+	copilot "github.com/pardnchiu/go-agent-skills/internal/agents/copilot"
 	"github.com/pardnchiu/go-agent-skills/internal/skill"
 )
 
 func main() {
-	client, err := c.NewCopilot()
+	client, err := copilot.New()
 	if err != nil {
 		slog.Error("failed to load Copilot token",
 			slog.String("error", err.Error()))
@@ -62,7 +62,7 @@ func main() {
 			allowAll = true
 		}
 
-		client, err := c.NewCopilot()
+		client, err := copilot.New()
 		if err != nil {
 			slog.Error("failed to load Copilot token", slog.String("error", err.Error()))
 			os.Exit(1)
