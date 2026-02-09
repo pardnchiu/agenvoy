@@ -13,9 +13,12 @@ import (
 )
 
 var (
+	// claude-sonnet-4-5 200K/64000
+	// claude-opus-4-6   200K/128K
+	// claude-opus-4-5   200K/128K
 	defaultModel = "claude-sonnet-4-5"
 	messagesAPI  = "https://api.anthropic.com/v1/messages"
-	maxTokens    = 8192
+	maxTokens    = 4096
 )
 
 func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput string, output io.Writer, allowAll bool) error {
@@ -38,16 +41,8 @@ func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []t.T
 		newMessages = append(newMessages, message)
 	}
 
-	newTools := make([]map[string]any, len(tools))
-	for i, tool := range tools {
-		newTools[i] = map[string]any{
-			"name":         tool.Function.Name,
-			"description":  tool.Function.Description,
-			"input_schema": json.RawMessage(tool.Function.Parameters),
-		}
-	}
-
-	result, _, err := utils.POSTJson[map[string]any](ctx, a.httpClient, messagesAPI, map[string]string{
+	newTools := a.convertToTools(tools)
+	result, _, err := utils.POSTJson[Output](ctx, a.httpClient, messagesAPI, map[string]string{
 		"x-api-key":         a.apiKey,
 		"anthropic-version": "2023-06-01",
 		"Content-Type":      "application/json",
@@ -62,28 +57,26 @@ func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []t.T
 		return nil, fmt.Errorf("API request: %w", err)
 	}
 
-	if errObj, ok := result["error"].(map[string]any); ok {
-		return nil, fmt.Errorf("API error: %s", errObj["message"])
+	if result.Error != nil {
+		return nil, fmt.Errorf("API error: %s", result.Error.Message)
 	}
 
-	return a.convertToOutput(result), nil
+	return a.convertToOutput(&result), nil
 }
 
 func (a *Agent) convertToMessage(message agents.Message) map[string]any {
-	newMessage := map[string]any{}
 	if message.ToolCallID != "" {
-		newMessage["role"] = "user"
-		newMessage["content"] = []map[string]any{
-			{
-				"type":        "tool_result",
-				"tool_use_id": message.ToolCallID,
-				"content":     message.Content,
+		return map[string]any{
+			"role": "user",
+			"content": []map[string]any{
+				{
+					"type":        "tool_result",
+					"tool_use_id": message.ToolCallID,
+					"content":     message.Content,
+				},
 			},
 		}
-		return newMessage
 	}
-
-	newMessage["role"] = message.Role
 
 	if len(message.ToolCalls) > 0 {
 		var content []map[string]any
@@ -97,15 +90,31 @@ func (a *Agent) convertToMessage(message agents.Message) map[string]any {
 				"input": input,
 			})
 		}
-		newMessage["content"] = content
-		return newMessage
+		return map[string]any{
+			"role":    message.Role,
+			"content": content,
+		}
 	}
 
-	newMessage["content"] = message.Content
-	return newMessage
+	return map[string]any{
+		"role":    message.Role,
+		"content": message.Content,
+	}
 }
 
-func (a *Agent) convertToOutput(resp map[string]any) *agents.OpenAIOutput {
+func (a *Agent) convertToTools(tools []t.Tool) []map[string]any {
+	newTools := make([]map[string]any, len(tools))
+	for i, tool := range tools {
+		newTools[i] = map[string]any{
+			"name":         tool.Function.Name,
+			"description":  tool.Function.Description,
+			"input_schema": json.RawMessage(tool.Function.Parameters),
+		}
+	}
+	return newTools
+}
+
+func (a *Agent) convertToOutput(resp *Output) *agents.OpenAIOutput {
 	output := &agents.OpenAIOutput{
 		Choices: make([]struct {
 			Message      agents.Message `json:"message"`
@@ -114,52 +123,28 @@ func (a *Agent) convertToOutput(resp map[string]any) *agents.OpenAIOutput {
 		}, 1),
 	}
 
-	content, ok := resp["content"].([]any)
-	if !ok {
-		return output
-	}
-
-	var toolCalls []struct {
-		ID       string `json:"id"`
-		Type     string `json:"type"`
-		Function struct {
-			Name      string `json:"name"`
-			Arguments string `json:"arguments"`
-		} `json:"function"`
-	}
+	var toolCalls []agents.OpenAIToolCall
 	var textContent string
 
-	for _, e := range content {
-		item, ok := e.(map[string]any)
-		if !ok {
-			continue
-		}
-
-		itemType, _ := item["type"].(string)
-		switch itemType {
-		case "text":
-			if text, ok := item["text"].(string); ok {
-				textContent = text
+	for _, item := range resp.Content {
+		if item.Type == "text" {
+			textContent = item.Text
+		} else if item.Type == "tool_use" {
+			arg := ""
+			if item.Input != nil {
+				data, err := json.Marshal(item.Input)
+				if err != nil {
+					continue
+				}
+				arg = string(data)
 			}
 
-		case "tool_use":
-			args, _ := json.Marshal(item["input"])
-			id, _ := item["id"].(string)
-			name, _ := item["name"].(string)
-
-			toolCall := struct {
-				ID       string `json:"id"`
-				Type     string `json:"type"`
-				Function struct {
-					Name      string `json:"name"`
-					Arguments string `json:"arguments"`
-				} `json:"function"`
-			}{
-				ID:   id,
+			toolCall := agents.OpenAIToolCall{
+				ID:   item.ID,
 				Type: "function",
 			}
-			toolCall.Function.Name = name
-			toolCall.Function.Arguments = string(args)
+			toolCall.Function.Name = item.Name
+			toolCall.Function.Arguments = arg
 			toolCalls = append(toolCalls, toolCall)
 		}
 	}

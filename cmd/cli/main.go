@@ -12,6 +12,7 @@ import (
 	"github.com/pardnchiu/go-agent-skills/internal/agents"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/claude"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/copilot"
+	"github.com/pardnchiu/go-agent-skills/internal/agents/gemini"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/nvidia"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/openai"
 	"github.com/pardnchiu/go-agent-skills/internal/skill"
@@ -95,6 +96,7 @@ func selectAgent() agents.Agent {
 			"GitHub Copilot",
 			"OpenAI",
 			"Claude",
+			"Gemini",
 			"Nvidia",
 		},
 		HideSelected: true,
@@ -132,6 +134,14 @@ func selectAgent() agents.Agent {
 		return agent
 
 	case 3:
+		agent, err := gemini.New()
+		if err != nil {
+			slog.Error("failed to initialize Anthropic", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+		return agent
+
+	case 4:
 		agent, err := nvidia.New()
 		if err != nil {
 			slog.Error("failed to initialize Anthropic", slog.String("error", err.Error()))

@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	// z-ai/glm4.7
 	// openai/gpt-oss-120b
+	// z-ai/glm4.7
 	// qwen/qwen3-235b-a22b
 	// qwen/qwen3-coder-480b-a35b-instruct
 	defaultModel = "openai/gpt-oss-120b"

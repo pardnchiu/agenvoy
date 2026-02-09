@@ -12,6 +12,9 @@ import (
 )
 
 var (
+	// gpt-4.1    1m/32k
+	// gpt-5-mini 400k/128k
+	// gpt-4o     128k/4k
 	defaultModel = "gpt-4.1"
 	chatAPI      = "https://api.githubcopilot.com/chat/completions"
 )
