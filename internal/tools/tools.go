@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pardnchiu/go-agent-skills/internal/tools/model"
+	"github.com/pardnchiu/go-agent-skills/internal/tools/types"
 )
 
 var (
@@ -19,7 +19,7 @@ var (
 // disallowed = regexp.MustCompile(`[;&|` + "`" + `$(){}!<>\\]`)
 )
 
-func runCommand(e *model.Executor, command string) (string, error) {
+func runCommand(e *types.Executor, command string) (string, error) {
 	command = strings.TrimSpace(command)
 	if command == "" {
 		return "", fmt.Errorf("failed to run command: command is empty")
@@ -76,7 +76,7 @@ func runCommand(e *model.Executor, command string) (string, error) {
 	return string(output), nil
 }
 
-func moveToTrash(e *model.Executor, args []string) (string, error) {
+func moveToTrash(e *types.Executor, args []string) (string, error) {
 	trashPath := filepath.Join(e.WorkPath, ".Trash")
 	os.MkdirAll(trashPath, 0755)
 
@@ -104,7 +104,7 @@ func moveToTrash(e *model.Executor, args []string) (string, error) {
 	return fmt.Sprintf("Successfully moved to .Trash: %s", strings.Join(moved, ", ")), nil
 }
 
-func searchContent(e *model.Executor, pattern, filePattern string) (string, error) {
+func searchContent(e *types.Executor, pattern, filePattern string) (string, error) {
 	re, err := regexp.Compile(pattern)
 	if err != nil {
 		return "", fmt.Errorf("failed to compile regex pattern (%s): %w", pattern, err)

@@ -6,8 +6,9 @@ import (
 	"fmt"
 
 	"github.com/pardnchiu/go-agent-skills/internal/agents"
+	atypes "github.com/pardnchiu/go-agent-skills/internal/agents/types"
 	"github.com/pardnchiu/go-agent-skills/internal/skill"
-	"github.com/pardnchiu/go-agent-skills/internal/tools/model"
+	ttypes "github.com/pardnchiu/go-agent-skills/internal/tools/types"
 	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
 
@@ -17,14 +18,14 @@ var (
 	// claude-opus-4-5   200K/128K
 	defaultModel = "claude-sonnet-4-5"
 	messagesAPI  = "https://api.anthropic.com/v1/messages"
-	maxTokens    = 4096
+	maxTokens    = 16384
 )
 
-func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput string, events chan<- agents.Event, allowAll bool) error {
+func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput string, events chan<- atypes.Event, allowAll bool) error {
 	return agents.Execute(ctx, a, a.workDir, skill, userInput, events, allowAll)
 }
 
-func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []model.Tool) (*agents.OpenAIOutput, error) {
+func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []ttypes.Tool) (*agents.OpenAIOutput, error) {
 	var systemPrompt string
 	var newMessages []map[string]any
 
@@ -58,6 +59,10 @@ func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []mod
 
 	if result.Error != nil {
 		return nil, fmt.Errorf("API error: %s", result.Error.Message)
+	}
+
+	if result.StopReason == "max_tokens" {
+		return nil, fmt.Errorf("response truncated: output exceeded max_tokens (%d)", maxTokens)
 	}
 
 	return a.convertToOutput(&result), nil
@@ -101,7 +106,7 @@ func (a *Agent) convertToMessage(message agents.Message) map[string]any {
 	}
 }
 
-func (a *Agent) convertToTools(tools []model.Tool) []map[string]any {
+func (a *Agent) convertToTools(tools []ttypes.Tool) []map[string]any {
 	newTools := make([]map[string]any, len(tools))
 	for i, tool := range tools {
 		newTools[i] = map[string]any{

@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pardnchiu/go-agent-skills/internal/tools/model"
+	"github.com/pardnchiu/go-agent-skills/internal/tools/types"
 )
 
-func ReadFile(e *model.Executor, path string) (string, error) {
+func ReadFile(e *types.Executor, path string) (string, error) {
 	fullPath := getFullPath(e, path)
 
 	if isExclude(e, fullPath) {
@@ -23,14 +23,14 @@ func ReadFile(e *model.Executor, path string) (string, error) {
 	return string(data), nil
 }
 
-func getFullPath(e *model.Executor, path string) string {
+func getFullPath(e *types.Executor, path string) string {
 	if filepath.IsAbs(path) {
 		return path
 	}
 	return filepath.Join(e.WorkPath, path)
 }
 
-func isExclude(e *model.Executor, path string) bool {
+func isExclude(e *types.Executor, path string) bool {
 	excluded := false
 	for _, e := range e.Exclude {
 		match, err := filepath.Match(e.File, filepath.Base(path))

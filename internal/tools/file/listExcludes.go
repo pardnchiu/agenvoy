@@ -9,20 +9,20 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pardnchiu/go-agent-skills/internal/tools/model"
+	"github.com/pardnchiu/go-agent-skills/internal/tools/types"
 )
 
 //go:embed embed/exclude.json
 var excludeFiles []byte
 
-func ListExcludes(root string) []model.Exclude {
+func ListExcludes(root string) []types.Exclude {
 	var defaults []string
 	if err := json.Unmarshal(excludeFiles, &defaults); err != nil {
 		slog.Warn("failed to unmarshal exclude files, using empty list",
 			slog.String("error", err.Error()))
 	}
 
-	newFiles := make([]model.Exclude, 0, len(defaults))
+	newFiles := make([]types.Exclude, 0, len(defaults))
 	for _, line := range defaults {
 		if ef, ok := checkLine(line); ok {
 			newFiles = append(newFiles, ef)
@@ -49,14 +49,14 @@ func ListExcludes(root string) []model.Exclude {
 	return newFiles
 }
 
-func parseIgnore(path string) []model.Exclude {
+func parseIgnore(path string) []types.Exclude {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil
 	}
 	defer file.Close()
 
-	var files []model.Exclude
+	var files []types.Exclude
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		if ef, ok := checkLine(scanner.Text()); ok {
@@ -67,10 +67,10 @@ func parseIgnore(path string) []model.Exclude {
 	return files
 }
 
-func checkLine(raw string) (model.Exclude, bool) {
+func checkLine(raw string) (types.Exclude, bool) {
 	line := strings.TrimSpace(raw)
 	if line == "" || strings.HasPrefix(line, "#") {
-		return model.Exclude{}, false
+		return types.Exclude{}, false
 	}
 
 	negate := false
@@ -82,10 +82,10 @@ func checkLine(raw string) (model.Exclude, bool) {
 	line = strings.TrimPrefix(line, "/")
 	line = strings.TrimSuffix(line, "/")
 	if line == "" {
-		return model.Exclude{}, false
+		return types.Exclude{}, false
 	}
 
-	return model.Exclude{
+	return types.Exclude{
 		File:   line,
 		Negate: negate,
 	}, true

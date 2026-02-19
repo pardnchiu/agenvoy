@@ -10,15 +10,16 @@ import (
 	"strings"
 	"time"
 
+	atypes "github.com/pardnchiu/go-agent-skills/internal/agents/types"
 	"github.com/pardnchiu/go-agent-skills/internal/skill"
 	"github.com/pardnchiu/go-agent-skills/internal/tools"
-	"github.com/pardnchiu/go-agent-skills/internal/tools/model"
+	ttypes "github.com/pardnchiu/go-agent-skills/internal/tools/types"
 )
 
-//go:embed sysprompt.md
+//go:embed prompt/sysprompt.md
 var sysPrompt string
 
-//go:embed sysPromptBase.md
+//go:embed prompt/sysPromptBase.md
 var sysPromptBase string
 
 //go:embed prompt/skillSelector.md
@@ -58,20 +59,20 @@ type OpenAIOutput struct {
 }
 
 type Agent interface {
-	Send(ctx context.Context, messages []Message, toolDefs []model.Tool) (*OpenAIOutput, error)
-	Execute(ctx context.Context, skill *skill.Skill, userInput string, events chan<- Event, allowAll bool) error
+	Send(ctx context.Context, messages []Message, toolDefs []ttypes.Tool) (*OpenAIOutput, error)
+	Execute(ctx context.Context, skill *skill.Skill, userInput string, events chan<- atypes.Event, allowAll bool) error
 }
 
-func ExecuteAuto(ctx context.Context, agent Agent, scanner *skill.Scanner, userInput string, events chan<- Event, allowAll bool) error {
+func ExecuteAuto(ctx context.Context, agent Agent, scanner *skill.Scanner, userInput string, events chan<- atypes.Event, allowAll bool) error {
 	workDir, _ := os.Getwd()
 
 	matched := selectSkill(ctx, agent, scanner, userInput)
 	if matched != nil {
-		events <- Event{Type: EventText, Text: fmt.Sprintf("Auto-selected skill: %s", matched.Name)}
+		events <- atypes.Event{Type: atypes.EventText, Text: fmt.Sprintf("Auto-selected skill: %s", matched.Name)}
 		return Execute(ctx, agent, workDir, matched, userInput, events, allowAll)
 	}
 
-	events <- Event{Type: EventText, Text: "No matching skill found, using tools directly"}
+	events <- atypes.Event{Type: atypes.EventText, Text: "No matching skill found, using tools directly"}
 	return Execute(ctx, agent, workDir, nil, userInput, events, allowAll)
 }
 
@@ -124,7 +125,7 @@ func selectSkill(ctx context.Context, agent Agent, scanner *skill.Scanner, userI
 	return nil
 }
 
-func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skill, userInput string, events chan<- Event, allowAll bool) error {
+func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skill, userInput string, events chan<- atypes.Event, allowAll bool) error {
 	if skill != nil && skill.Content == "" {
 		return fmt.Errorf("SKILL.md is empty: %s", skill.Path)
 	}
@@ -166,8 +167,8 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 			messages = append(messages, choice.Message)
 
 			for _, e := range choice.Message.ToolCalls {
-				events <- Event{
-					Type:     EventToolCall,
+				events <- atypes.Event{
+					Type:     atypes.EventToolCall,
 					ToolName: e.Function.Name,
 					ToolArgs: e.Function.Arguments,
 					ToolID:   e.ID,
@@ -175,8 +176,8 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 
 				if !allowAll {
 
-					events <- Event{
-						Type:     EventToolConfirm,
+					events <- atypes.Event{
+						Type:     atypes.EventToolConfirm,
 						ToolName: e.Function.Name,
 						ToolArgs: e.Function.Arguments,
 						ToolID:   e.ID,
@@ -188,8 +189,8 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 					result = "Error: " + err.Error()
 				}
 
-				events <- Event{
-					Type:     EventToolResult,
+				events <- atypes.Event{
+					Type:     atypes.EventToolResult,
 					ToolName: e.Function.Name,
 					ToolID:   e.ID,
 					Result:   result,
@@ -207,14 +208,14 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 		switch v := choice.Message.Content.(type) {
 		case string:
 			if v != "" {
-				events <- Event{Type: EventText, Text: v}
+				events <- atypes.Event{Type: atypes.EventText, Text: v}
 			}
 		case nil:
 		default:
 			return fmt.Errorf("unexpected content type: %T", choice.Message.Content)
 		}
 
-		events <- Event{Type: EventDone}
+		events <- atypes.Event{Type: atypes.EventDone}
 		return nil
 	}
 

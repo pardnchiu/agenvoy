@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pardnchiu/go-agent-skills/internal/tools/model"
+	"github.com/pardnchiu/go-agent-skills/internal/tools/types"
 )
 
-func GlobFiles(e *model.Executor, pattern string) (string, error) {
+func GlobFiles(e *types.Executor, pattern string) (string, error) {
 	pattern = filepath.ToSlash(pattern)
 	patterns := strings.Split(pattern, "/")
 

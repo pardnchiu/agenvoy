@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/pardnchiu/go-agent-skills/internal/tools/file"
-	"github.com/pardnchiu/go-agent-skills/internal/tools/model"
+	"github.com/pardnchiu/go-agent-skills/internal/tools/types"
 )
 
 //go:embed embed/tools.json
@@ -15,8 +15,8 @@ var toolsMap []byte
 //go:embed embed/commands.json
 var allowCommand []byte
 
-func NewExecutor(workPath string) (*model.Executor, error) {
-	var tools []model.Tool
+func NewExecutor(workPath string) (*types.Executor, error) {
+	var tools []types.Tool
 	if err := json.Unmarshal(toolsMap, &tools); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal tools: %w", err)
 	}
@@ -31,7 +31,7 @@ func NewExecutor(workPath string) (*model.Executor, error) {
 		allowedCommand[cmd] = true
 	}
 
-	return &model.Executor{
+	return &types.Executor{
 		WorkPath:       workPath,
 		AllowedCommand: allowedCommand,
 		Exclude:        file.ListExcludes(workPath),
@@ -39,7 +39,7 @@ func NewExecutor(workPath string) (*model.Executor, error) {
 	}, nil
 }
 
-func Execute(e *model.Executor, name string, args json.RawMessage) (string, error) {
+func Execute(e *types.Executor, name string, args json.RawMessage) (string, error) {
 	switch name {
 	case "read_file":
 		var params struct {

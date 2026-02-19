@@ -5,10 +5,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pardnchiu/go-agent-skills/internal/tools/model"
+	"github.com/pardnchiu/go-agent-skills/internal/tools/types"
 )
 
-func WriteFile(e *model.Executor, path, content string) (string, error) {
+func WriteFile(e *types.Executor, path, content string) (string, error) {
+	if content == "" {
+		return "", fmt.Errorf("refused to write empty content to file (%s)", path)
+	}
+
 	fullPath := getFullPath(e, path)
 
 	dir := filepath.Dir(fullPath)

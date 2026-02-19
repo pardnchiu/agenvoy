@@ -5,10 +5,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pardnchiu/go-agent-skills/internal/tools/model"
+	"github.com/pardnchiu/go-agent-skills/internal/tools/types"
 )
 
-func PatchEdit(e *model.Executor, path, oldString, newString string) (string, error) {
+func PatchEdit(e *types.Executor, path, oldString, newString string) (string, error) {
 	fullPath := getFullPath(e, path)
 
 	if isExclude(e, fullPath) {

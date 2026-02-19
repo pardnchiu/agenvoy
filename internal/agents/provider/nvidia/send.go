@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	"github.com/pardnchiu/go-agent-skills/internal/agents"
+	atypes "github.com/pardnchiu/go-agent-skills/internal/agents/types"
 	"github.com/pardnchiu/go-agent-skills/internal/skill"
-	"github.com/pardnchiu/go-agent-skills/internal/tools/model"
+	ttypes "github.com/pardnchiu/go-agent-skills/internal/tools/types"
 	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
 
@@ -19,11 +20,11 @@ var (
 	chatAPI      = "https://integrate.api.nvidia.com/v1/chat/completions"
 )
 
-func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput string, events chan<- agents.Event, allowAll bool) error {
+func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput string, events chan<- atypes.Event, allowAll bool) error {
 	return agents.Execute(ctx, a, a.workDir, skill, userInput, events, allowAll)
 }
 
-func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []model.Tool) (*agents.OpenAIOutput, error) {
+func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []ttypes.Tool) (*agents.OpenAIOutput, error) {
 	result, _, err := utils.POSTJson[agents.OpenAIOutput](ctx, a.httpClient, chatAPI, map[string]string{
 		"Authorization": "Bearer " + a.apiKey,
 		"Content-Type":  "application/json",

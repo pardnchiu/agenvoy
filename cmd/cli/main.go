@@ -16,6 +16,7 @@ import (
 	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/gemini"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/nvidia"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/openai"
+	atypes "github.com/pardnchiu/go-agent-skills/internal/agents/types"
 	"github.com/pardnchiu/go-agent-skills/internal/skill"
 
 	"github.com/joho/godotenv"
@@ -82,7 +83,7 @@ func main() {
 				// 明確指定 skill：run <skill_name> <input>
 				userInput := os.Args[3]
 				ctx := context.Background()
-				if err := runWithEvents(ctx, func(ch chan<- agents.Event) error {
+				if err := runWithEvents(ctx, func(ch chan<- atypes.Event) error {
 					return agent.Execute(ctx, targetSkill, userInput, ch, allowAll)
 				}); err != nil {
 					slog.Error("failed to execute skill", slog.String("error", err.Error()))
@@ -95,7 +96,7 @@ func main() {
 		userInput := os.Args[2]
 		allowAll = slices.Contains(os.Args[3:], "--allow")
 		ctx := context.Background()
-		if err := runWithEvents(ctx, func(ch chan<- agents.Event) error {
+		if err := runWithEvents(ctx, func(ch chan<- atypes.Event) error {
 			return agents.ExecuteAuto(ctx, agent, scanner, userInput, ch, allowAll)
 		}); err != nil {
 			slog.Error("failed to execute", slog.String("error", err.Error()))
@@ -120,18 +121,18 @@ func main() {
 
 }
 
-func printTool(ev agents.Event) {
+func printTool(ev atypes.Event) {
 	fmt.Printf("[*] Tool: %s — \033[90m%s\033[0m\n", ev.ToolName, ev.ToolArgs)
 }
 
-func printContent(ev agents.Event) {
+func printContent(ev atypes.Event) {
 	fmt.Print("\033[90m──────────────────────────────────────────────────\n")
 	fmt.Printf("%s\n", strings.TrimSpace(ev.Result))
 	fmt.Print("──────────────────────────────────────────────────\033[0m\n")
 }
 
-func runWithEvents(_ context.Context, fn func(chan<- agents.Event) error) error {
-	ch := make(chan agents.Event, 16)
+func runWithEvents(_ context.Context, fn func(chan<- atypes.Event) error) error {
+	ch := make(chan atypes.Event, 16)
 	var execErr error
 
 	go func() {
@@ -141,13 +142,13 @@ func runWithEvents(_ context.Context, fn func(chan<- agents.Event) error) error 
 
 	for ev := range ch {
 		switch ev.Type {
-		case agents.EventText:
+		case atypes.EventText:
 			fmt.Printf("[*] %s\n", ev.Text)
 
-		case agents.EventToolCall:
+		case atypes.EventToolCall:
 			printTool(ev)
 
-		case agents.EventToolConfirm:
+		case atypes.EventToolConfirm:
 			prompt := promptui.Select{
 				Label: "Continue?",
 				Items: []string{"Yes", "Skip", "Stop"},
@@ -161,17 +162,17 @@ func runWithEvents(_ context.Context, fn func(chan<- agents.Event) error) error 
 				return nil
 			}
 
-		case agents.EventToolResult:
+		case atypes.EventToolResult:
 			if ev.ToolName == "write_file" {
 				printContent(ev)
 			}
 
-		case agents.EventError:
+		case atypes.EventError:
 			if ev.Err != nil {
 				fmt.Fprintf(os.Stderr, "[!] Error: %v\n", ev.Err)
 			}
 
-		case agents.EventDone:
+		case atypes.EventDone:
 		}
 	}
 
