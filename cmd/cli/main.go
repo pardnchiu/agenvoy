@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/manifoldco/promptui"
 	"github.com/pardnchiu/go-agent-skills/internal/agents"
@@ -78,6 +80,7 @@ func main() {
 		scanner := skill.NewScanner()
 
 		// 嘗試第二個參數是否為已知 skill name
+		start := time.Now()
 		if len(os.Args) >= 4 {
 			if targetSkill, ok := scanner.Skills.ByName[os.Args[2]]; ok {
 				// 明確指定 skill：run <skill_name> <input>
@@ -89,6 +92,7 @@ func main() {
 					slog.Error("failed to execute skill", slog.String("error", err.Error()))
 					os.Exit(1)
 				}
+				fmt.Printf("\n[*] Total time: %s\n", time.Since(start).Round(time.Millisecond))
 				return
 			}
 		}
@@ -102,6 +106,7 @@ func main() {
 			slog.Error("failed to execute", slog.String("error", err.Error()))
 			os.Exit(1)
 		}
+		fmt.Printf("\n[*] Total time: %s\n", time.Since(start).Round(time.Millisecond))
 
 		// agent := selectAgent()
 		// scanner := skill.NewScanner()
@@ -122,7 +127,27 @@ func main() {
 }
 
 func printTool(ev atypes.Event) {
-	fmt.Printf("[*] Tool: %s — \033[90m%s\033[0m\n", ev.ToolName, ev.ToolArgs)
+	var args map[string]any
+	json.Unmarshal([]byte(ev.ToolArgs), &args)
+
+	switch ev.ToolName {
+	case "read_file":
+		fmt.Printf("[*] Read File — \033[36m%s\033[0m\n", args["path"])
+	case "list_files":
+		fmt.Printf("[*] List Directory — \033[36m%s\033[0m\n", args["path"])
+	case "glob_files":
+		fmt.Printf("[*] Glob Files — \033[35m%s\033[0m\n", args["pattern"])
+	case "write_file":
+		fmt.Printf("[*] Write File — \033[33m%s\033[0m\n", args["path"])
+	case "search_content":
+		fmt.Printf("[*] Search Content — \033[35m%s\033[0m\n", args["pattern"])
+	case "patch_edit":
+		fmt.Printf("[*] Patch Edit — \033[33m%s\033[0m\n", args["path"])
+	case "run_command":
+		fmt.Printf("[*] Run Command — \033[32m%s\033[0m\n", args["command"])
+	default:
+		fmt.Printf("[*] Tool: %s — \033[90m%s\033[0m\n", ev.ToolName, ev.ToolArgs)
+	}
 }
 
 func printContent(ev atypes.Event) {

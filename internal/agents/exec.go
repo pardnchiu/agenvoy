@@ -52,9 +52,9 @@ type OpenAIOutput struct {
 		FinishReason string  `json:"finish_reason,omitempty"`
 	} `json:"choices"`
 	Error *struct {
-		Message string `json:"message"`
-		Type    string `json:"type"`
-		Code    string `json:"code"`
+		Message string      `json:"message"`
+		Type    string      `json:"type"`
+		Code    json.Number `json:"code"`
 	} `json:"error,omitempty"`
 }
 
@@ -72,7 +72,6 @@ func ExecuteAuto(ctx context.Context, agent Agent, scanner *skill.Scanner, userI
 		return Execute(ctx, agent, workDir, matched, userInput, events, allowAll)
 	}
 
-	events <- atypes.Event{Type: atypes.EventText, Text: "No matching skill found, using tools directly"}
 	return Execute(ctx, agent, workDir, nil, userInput, events, allowAll)
 }
 
@@ -167,9 +166,14 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 			messages = append(messages, choice.Message)
 
 			for _, e := range choice.Message.ToolCalls {
+				toolName := e.Function.Name
+				if idx := strings.Index(toolName, "<|"); idx != -1 {
+					toolName = toolName[:idx]
+				}
+
 				events <- atypes.Event{
 					Type:     atypes.EventToolCall,
-					ToolName: e.Function.Name,
+					ToolName: toolName,
 					ToolArgs: e.Function.Arguments,
 					ToolID:   e.ID,
 				}
@@ -178,20 +182,20 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 
 					events <- atypes.Event{
 						Type:     atypes.EventToolConfirm,
-						ToolName: e.Function.Name,
+						ToolName: toolName,
 						ToolArgs: e.Function.Arguments,
 						ToolID:   e.ID,
 					}
 				}
 
-				result, err := tools.Execute(exec, e.Function.Name, json.RawMessage(e.Function.Arguments))
+				result, err := tools.Execute(exec, toolName, json.RawMessage(e.Function.Arguments))
 				if err != nil {
 					result = "Error: " + err.Error()
 				}
 
 				events <- atypes.Event{
 					Type:     atypes.EventToolResult,
-					ToolName: e.Function.Name,
+					ToolName: toolName,
 					ToolID:   e.ID,
 					Result:   result,
 				}
@@ -223,8 +227,14 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 }
 
 func systemPrompt(workPath string, skill *skill.Skill) string {
+	now := time.Now()
+	dateStr := now.Format("2006-01-02T15:04:05 MST (UTC-07:00)")
+
 	if skill == nil {
-		return strings.ReplaceAll(sysPromptBase, "{{.WorkPath}}", workPath)
+		return strings.NewReplacer(
+			"{{.WorkPath}}", workPath,
+			"{{.Date}}", dateStr,
+		).Replace(sysPromptBase)
 	}
 	content := skill.Content
 
@@ -240,5 +250,6 @@ func systemPrompt(workPath string, skill *skill.Skill) string {
 		"{{.WorkPath}}", workPath,
 		"{{.SkillPath}}", skill.Path,
 		"{{.Content}}", content,
+		"{{.Date}}", dateStr,
 	).Replace(sysPrompt)
 }

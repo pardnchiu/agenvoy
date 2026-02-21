@@ -32,5 +32,7 @@
   "jq",
   "echo",
   "which",
-  "date"
+  "date",
+  "docker",
+  "podman"
 ]

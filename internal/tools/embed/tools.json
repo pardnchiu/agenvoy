@@ -137,5 +137,34 @@
         "required": ["command"]
       }
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "fetch_yahoo_finance",
+      "description": "透過 Yahoo Finance 取得股票即時報價與 K 線資料。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "description": "股票代碼，例如 NVDA、AAPL、TSLA"
+          },
+          "interval": {
+            "type": "string",
+            "description": "K 線間距",
+            "enum": ["1m", "2m", "5m", "15m", "30m", "60m", "1h", "1d", "1wk"],
+            "default": "1m"
+          },
+          "range": {
+            "type": "string",
+            "description": "資料範圍",
+            "enum": ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "ytd", "max"],
+            "default": "1d"
+          }
+        },
+        "required": ["symbol"]
+      }
+    }
   }
 ]

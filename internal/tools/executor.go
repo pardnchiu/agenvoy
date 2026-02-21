@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	yahoofinance "github.com/pardnchiu/go-agent-skills/internal/tools/apis/yahooFinance"
 	"github.com/pardnchiu/go-agent-skills/internal/tools/file"
 	"github.com/pardnchiu/go-agent-skills/internal/tools/types"
 )
@@ -108,6 +109,18 @@ func Execute(e *types.Executor, name string, args json.RawMessage) (string, erro
 			return "", err
 		}
 		return runCommand(e, params.Command)
+
+	case "fetch_yahoo_finance":
+		var params struct {
+			Symbol   string `json:"symbol"`
+			Interval string `json:"interval"`
+			Range    string `json:"range"`
+		}
+		if err := json.Unmarshal(args, &params); err != nil {
+			return "", fmt.Errorf("failed to unmarshal json (%s): %w", name, err)
+		}
+		return yahoofinance.Fetch(params.Symbol, params.Interval, params.Range)
+
 	default:
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}
