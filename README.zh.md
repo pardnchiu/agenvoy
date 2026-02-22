@@ -1,10 +1,14 @@
 > [!NOTE]
 > 此 README 由 [SKILL](https://github.com/pardnchiu/skill-readme-generate) 生成，英文版請參閱 [這裡](./README.md)。
 
+![cover](./cover.png)
+
 # go-agent-skills
 
 [![pkg](https://pkg.go.dev/badge/github.com/pardnchiu/go-agent-skills.svg)](https://pkg.go.dev/github.com/pardnchiu/go-agent-skills)
+[![card](https://goreportcard.com/badge/github.com/pardnchiu/go-agent-skills)](https://goreportcard.com/report/github.com/pardnchiu/go-agent-skills)
 [![license](https://img.shields.io/github/license/pardnchiu/go-agent-skills)](LICENSE)
+[![version](https://img.shields.io/github/v/tag/pardnchiu/go-agent-skills?label=release)](https://github.com/pardnchiu/go-agent-skills/releases)
 
 > 統一多家 AI Agent 介面的 Skill 執行引擎，支援 GitHub Copilot、OpenAI、Claude、Gemini 與 Nvidia
 
@@ -13,6 +17,7 @@
 - [功能特點](#功能特點)
 - [架構](#架構)
 - [檔案結構](#檔案結構)
+- [內建工具](#內建工具)
 - [授權](#授權)
 - [Author](#author)
 - [Stars](#stars)
@@ -21,48 +26,35 @@
 
 > `go install github.com/pardnchiu/go-agent-skills/cmd/cli@latest` · [完整文件](./doc.zh.md)
 
-### 整合多種雲端模型的 Agent 介面
+### 五大 AI 後端統一介面
 
-提供單一 `Agent` 介面，可同時整合 GitHub Copilot、OpenAI、Claude、Gemini 與 Nvidia 等主流雲端 AI 模型。開發者無需分別適配各家 API，所有雲端模型的接入邏輯與認證（如 Copilot 的 Device Code、或 API Key 驗證）皆於 Agent 層統一處理，使用統一的 `Send()` 及 `Execute()` 方法即可存取多種雲端 AI 算法。
+透過統一的 `Agent` interface 支援 GitHub Copilot（裝置碼認證）、OpenAI、Anthropic Claude、Google Gemini、Nvidia 五種 AI 後端，消除各 API 的差異。切換後端無需修改 Skill 或工具定義，系統自動處理訊息格式轉換與工具呼叫標準化。
 
-### 安全的指令執行機制
+### LLM 驅動的 Skill 自動匹配
 
-內建 `rm` 指令攔截並自動移至 `.Trash` 目錄，避免 LLM 誤刪關鍵檔案。所有危險指令皆需通過白名單驗證，並支援互動式確認機制（`--allow` 旗標可跳過）。執行過程透明化，所有工具呼叫前都會印出參數供使用者檢視。
+透過 LLM 分析使用者輸入，從已安裝的 Skill 中自動識別並選擇最適合的執行方案，無需手動指定。若無匹配 Skill，系統自動降級為純工具呼叫模式，最多支援 32 次工具迭代迴圈，確保複雜任務完整完成。
 
-### 智能 Skill 自動匹配
+### 安全工具執行器（rm 攔截 + 動態 API 擴展）
 
-當使用者未明確指定 Skill 名稱時，系統透過 LLM 自動從已安裝的 Skill 清單中選擇最符合需求的 Skill。若無適配 Skill，則退回至直接使用工具模式執行任務，無需手動指定工具或 Skill。
+內建 `rm` 命令攔截機制將誤刪檔案移至 `.Trash` 保護資料，搭配命令白名單嚴格限制可執行指令範圍。除 11 個內建工具（檔案操作、Yahoo Finance、Google News、天氣查詢、HTTP 請求）外，支援透過 JSON 設定檔動態擴展自訂 API 工具，無需修改原始碼。
 
 ## 架構
 
 ```mermaid
-graph TB
-    User[使用者輸入] --> CLI[CLI 進入點]
-    CLI --> AgentSelect[Agent 選擇器]
-    AgentSelect --> |Copilot| CopilotAgent[Copilot Agent]
-    AgentSelect --> |OpenAI| OpenAIAgent[OpenAI Agent]
-    AgentSelect --> |Claude| ClaudeAgent[Claude Agent]
-    AgentSelect --> |Gemini| GeminiAgent[Gemini Agent]
-    AgentSelect --> |Nvidia| NvidiaAgent[Nvidia Agent]
-    
-    CopilotAgent --> Execute[Execute]
-    OpenAIAgent --> Execute
-    ClaudeAgent --> Execute
-    GeminiAgent --> Execute
-    NvidiaAgent --> Execute
-    
-    Execute --> SkillMatch{有指定 Skill?}
-    SkillMatch -->|是| SkillExec[Skill 執行]
-    SkillMatch -->|否| AutoSelect[LLM 自動選擇]
-    AutoSelect --> SkillExec
-    AutoSelect --> ToolExec[直接工具執行]
-    
-    SkillExec --> ToolCall[Tool Call 迴圈]
-    ToolExec --> ToolCall
-    ToolCall --> Executor[Tools Executor]
-    Executor --> |read_file/write_file| FileOps[檔案操作]
-    Executor --> |run_command| SafeCmd[安全指令執行]
-    SafeCmd --> |rm| Trash[移至 .Trash]
+graph LR
+    A[使用者輸入] --> B[CLI 進入點]
+    B --> C[Agent 選擇器]
+    C --> D1[Copilot]
+    C --> D2[OpenAI]
+    C --> D3[Claude]
+    C --> D4[Gemini]
+    C --> D5[Nvidia]
+    D1 & D2 & D3 & D4 & D5 --> E[執行迴圈]
+    E --> F{Skill 匹配?}
+    F -->|是| G[Skill 上下文]
+    F -->|否| H[純工具模式]
+    G & H --> I[Tool Executor]
+    I --> J[File Tools / API Tools / Commands]
 ```
 
 ## 檔案結構
@@ -71,26 +63,35 @@ graph TB
 go-agent-skills/
 ├── cmd/
 │   └── cli/
-│       └── main.go              # CLI 進入點，處理 list/run 指令
+│       └── main.go           # CLI 進入點
 ├── internal/
-│   ├── agents/                  # Agent 實作
-│   │   ├── exec.go              # 統一執行邏輯與 Skill 自動匹配
-│   │   ├── copilot/             # GitHub Copilot（Device Code 登入）
-│   │   ├── openai/              # OpenAI API
-│   │   ├── claude/              # Anthropic Claude API
-│   │   ├── gemini/              # Google Gemini API
-│   │   └── nvidia/              # Nvidia API
-│   ├── skill/                   # Skill 掃描與解析
-│   │   ├── scanner.go           # 並行掃描多路徑 SKILL.md
-│   │   └── parser.go            # 解析 SKILL.md 中的 metadata
-│   └── tools/                   # 工具執行器
-│       ├── executor.go          # Tool 定義與執行入口
-│       ├── file.go              # read_file/write_file/list_files
-│       └── tools.go             # run_command（含白名單與 rm 攔截）
+│   ├── agents/               # Agent 實作
+│   │   ├── exec.go          # 統一執行迴圈
+│   │   └── provider/        # Claude、OpenAI、Copilot、Gemini、Nvidia
+│   ├── skill/                # Skill 掃描器與解析器
+│   ├── tools/                # 工具執行器
+│   │   ├── apis/            # Yahoo Finance、Google RSS、天氣
+│   │   ├── apiAdapter/      # JSON 驅動的動態 API 載入器
+│   │   └── file/            # 檔案操作工具
 ├── go.mod
-├── LICENSE
 └── README.md
 ```
+
+## 內建工具
+
+| 工具 | 說明 |
+|------|------|
+| `read_file` | 讀取指定路徑的檔案內容 |
+| `list_files` | 列出目錄內容（支援遞迴旗標） |
+| `glob_files` | 使用 glob 模式搜尋檔案（例如 `**/*.go`） |
+| `write_file` | 寫入或建立檔案（會覆蓋現有內容） |
+| `search_content` | 使用正規表達式搜尋檔案內容，支援檔案篩選 |
+| `patch_edit` | 精確字串替換，比全檔覆寫更安全 |
+| `run_command` | 執行白名單內的 shell 指令，含 `rm` 攔截機制 |
+| `fetch_yahoo_finance` | 透過 Yahoo Finance 取得股票報價與 K 線資料 |
+| `fetch_google_rss` | Google News RSS 搜尋，支援時間範圍與語言設定 |
+| `send_http_request` | 通用 HTTP 請求（GET/POST/PUT/DELETE/PATCH） |
+| `fetch_weather` | 透過 wttr.in 取得天氣預報與即時狀況 |
 
 ## 授權
 

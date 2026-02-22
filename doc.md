@@ -4,7 +4,7 @@
 
 ## Prerequisites
 
-- Go 1.25 or higher
+- Go 1.25.1 or higher
 - At least one AI Agent credential (GitHub Copilot subscription or any of the following API keys):
   - `OPENAI_API_KEY`
   - `ANTHROPIC_API_KEY`
@@ -131,7 +131,7 @@ If the input doesn't match any installed Skill, the system falls back to direct 
 |---------|--------|-------------|
 | `list` | `./agent-skills list` | List all installed Skills |
 | `run` | `./agent-skills run <skill_name> <input> [--allow]` | Execute specified Skill |
-| `run` | `./agent-skills run <input> [--allow]` | Auto-match Skill or use tool execution |
+| `run` | `./agent-skills run <input> [--allow]` | Auto-match Skill or use tool-only mode |
 
 ### Flags
 
@@ -171,11 +171,16 @@ All Agents share the following tool collection:
 | Tool | Parameters | Description |
 |------|------------|-------------|
 | `read_file` | `path` | Read file content at specified path |
-| `write_file` | `path`, `content` | Write or create file (overwrites existing content) |
-| `list_files` | `path`, `recursive` | List directory contents (`recursive` is optional boolean) |
+| `list_files` | `path`, `recursive?` | List directory contents (`recursive` is optional boolean) |
 | `glob_files` | `pattern` | Search files using glob pattern (e.g., `**/*.go`) |
-| `search_content` | `pattern`, `file_pattern` | Search file content using regex |
+| `write_file` | `path`, `content` | Write or create file (overwrites existing content) |
+| `search_content` | `pattern`, `file_pattern?` | Search file content using regex; `file_pattern` optional glob filter |
+| `patch_edit` | `path`, `old_string`, `new_string` | Replace first exact match of `old_string` with `new_string` |
 | `run_command` | `command` | Execute whitelisted shell commands |
+| `fetch_yahoo_finance` | `symbol`, `interval?`, `range?` | Stock quotes and candlestick data; interval: `1m`–`1wk`, range: `1d`–`max` |
+| `fetch_google_rss` | `keyword`, `time`, `lang?` | Google News RSS search; time: `1h`/`3h`/`6h`/`12h`/`24h`/`7d` |
+| `send_http_request` | `url`, `method?`, `headers?`, `body?`, `content_type?`, `timeout?` | Generic HTTP request; method defaults to `GET`, timeout up to 300s |
+| `fetch_weather` | `city?`, `days?`, `hourly_interval?` | Weather forecast via wttr.in; `days=-1` for current only, default 3-day forecast |
 
 #### run_command Safety Mechanisms
 

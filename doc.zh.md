@@ -4,7 +4,7 @@
 
 ## 前置需求
 
-- Go 1.25 或更高版本
+- Go 1.25.1 或更高版本
 - 至少一組 AI Agent 憑證（GitHub Copilot 訂閱或以下任一 API Key）：
   - `OPENAI_API_KEY`
   - `ANTHROPIC_API_KEY`
@@ -131,7 +131,7 @@ Found 3 skill(s):
 |------|------|------|
 | `list` | `./agent-skills list` | 列出所有已安裝的 Skill |
 | `run` | `./agent-skills run <skill_name> <input> [--allow]` | 執行指定的 Skill |
-| `run` | `./agent-skills run <input> [--allow]` | 自動匹配 Skill 或使用工具執行 |
+| `run` | `./agent-skills run <input> [--allow]` | 自動匹配 Skill 或使用純工具模式 |
 
 ### 旗標
 
@@ -171,11 +171,16 @@ Token 會在過期前自動更新，無需手動管理。
 | 工具 | 參數 | 說明 |
 |------|------|------|
 | `read_file` | `path` | 讀取指定路徑的檔案內容 |
-| `write_file` | `path`, `content` | 寫入或建立檔案（會覆蓋現有內容） |
-| `list_files` | `path`, `recursive` | 列出目錄內容（`recursive` 為選填布林值） |
+| `list_files` | `path`, `recursive?` | 列出目錄內容（`recursive` 為選填布林值） |
 | `glob_files` | `pattern` | 使用 glob 模式搜尋檔案（例如 `**/*.go`） |
-| `search_content` | `pattern`, `file_pattern` | 使用正規表達式搜尋檔案內容 |
+| `write_file` | `path`, `content` | 寫入或建立檔案（會覆蓋現有內容） |
+| `search_content` | `pattern`, `file_pattern?` | 使用正規表達式搜尋檔案內容；`file_pattern` 為選填 glob 篩選 |
+| `patch_edit` | `path`, `old_string`, `new_string` | 將 `old_string` 的第一個精確匹配替換為 `new_string` |
 | `run_command` | `command` | 執行白名單內的 shell 指令 |
+| `fetch_yahoo_finance` | `symbol`, `interval?`, `range?` | 股票報價與 K 線資料；interval: `1m`–`1wk`，range: `1d`–`max` |
+| `fetch_google_rss` | `keyword`, `time`, `lang?` | Google News RSS 搜尋；time: `1h`/`3h`/`6h`/`12h`/`24h`/`7d` |
+| `send_http_request` | `url`, `method?`, `headers?`, `body?`, `content_type?`, `timeout?` | 通用 HTTP 請求；method 預設 `GET`，timeout 最大 300 秒 |
+| `fetch_weather` | `city?`, `days?`, `hourly_interval?` | 透過 wttr.in 取得天氣預報；`days=-1` 僅回當前狀況，預設三天預報 |
 
 #### run_command 安全機制
 
