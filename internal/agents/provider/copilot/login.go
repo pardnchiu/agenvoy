@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -35,11 +34,11 @@ type DeviceCode struct {
 }
 
 func (c *Agent) Login(ctx context.Context) (*Token, error) {
-	code, _, err := utils.POSTForm[DeviceCode](ctx, nil, deviceCodeAPI,
+	code, _, err := utils.POST[DeviceCode](ctx, nil, deviceCodeAPI,
 		map[string]string{},
-		url.Values{
-			"client_id": {clientID},
-		})
+		map[string]any{
+			"client_id": clientID,
+		}, "form")
 
 	expires := time.Now().Add(time.Duration(code.ExpiresIn) * time.Second)
 	fmt.Printf("[*] url:      %-36s\n", code.VerificationURI)
@@ -103,13 +102,13 @@ type GopilotAccessToken struct {
 }
 
 func (c *Agent) getAccessToken(ctx context.Context, client *http.Client, deviceCode string) (*Token, error) {
-	accessToken, _, err := utils.POSTForm[GopilotAccessToken](ctx, client, oauthAccessTokenAPI,
+	accessToken, _, err := utils.POST[GopilotAccessToken](ctx, client, oauthAccessTokenAPI,
 		map[string]string{},
-		url.Values{
-			"client_id":   {clientID},
-			"device_code": {deviceCode},
-			"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
-		})
+		map[string]any{
+			"client_id":   clientID,
+			"device_code": deviceCode,
+			"grant_type":  "urn:ietf:params:oauth:grant-type:device_code",
+		}, "form")
 	if err != nil {
 		return nil, err
 	}

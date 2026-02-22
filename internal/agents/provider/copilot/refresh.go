@@ -19,7 +19,7 @@ type RefreshToken struct {
 }
 
 func (c *Agent) checkExpires(ctx context.Context) error {
-	if c.Token == nil || time.Now().After(c.Token.ExpiresAt.Add(-60*time.Second)) {
+	if c.Refresh == nil || time.Now().Unix() >= c.Refresh.ExpiresAt-60 {
 		return c.refresh(ctx)
 	}
 	return nil
@@ -31,6 +31,9 @@ func (c *Agent) refresh(ctx context.Context) error {
 		"Accept":         "application/json",
 		"Editor-Version": "vscode/1.95.0",
 	})
+	if err != nil {
+		return fmt.Errorf("failed to refresh token: %w", err)
+	}
 	if code == http.StatusUnauthorized {
 		return fmt.Errorf("token expired, please login again")
 	}
@@ -39,9 +42,6 @@ func (c *Agent) refresh(ctx context.Context) error {
 	}
 	if code != http.StatusOK {
 		return fmt.Errorf("failed to refresh token, status code: %d", code)
-	}
-	if err != nil {
-		return err
 	}
 
 	c.Refresh = &token

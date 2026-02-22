@@ -42,9 +42,10 @@ func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []tty
 	newTools := a.convertToTools(tools)
 	apiURL := fmt.Sprintf("%s%s:generateContent?key=%s", baseAPI, defaultModel, a.apiKey)
 	requestBody := a.generateRequestBody(newMessages, systemPrompt, newTools)
-	result, _, err := utils.POSTJson[Output](ctx, a.httpClient, apiURL, map[string]string{
+
+	result, _, err := utils.POST[Output](ctx, a.httpClient, apiURL, map[string]string{
 		"Content-Type": "application/json",
-	}, requestBody)
+	}, requestBody, "json")
 	if err != nil {
 		return nil, fmt.Errorf("API request: %w", err)
 	}

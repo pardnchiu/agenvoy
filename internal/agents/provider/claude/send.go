@@ -42,7 +42,7 @@ func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []tty
 	}
 
 	newTools := a.convertToTools(tools)
-	result, _, err := utils.POSTJson[Output](ctx, a.httpClient, messagesAPI, map[string]string{
+	result, _, err := utils.POST[Output](ctx, a.httpClient, messagesAPI, map[string]string{
 		"x-api-key":         a.apiKey,
 		"anthropic-version": "2023-06-01",
 		"Content-Type":      "application/json",
@@ -52,7 +52,7 @@ func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []tty
 		"system":     systemPrompt,
 		"messages":   newMessages,
 		"tools":      newTools,
-	})
+	}, "json")
 	if err != nil {
 		return nil, fmt.Errorf("API request: %w", err)
 	}

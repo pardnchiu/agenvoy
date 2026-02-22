@@ -20,21 +20,22 @@ var (
 )
 
 func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput string, events chan<- atypes.Event, allowAll bool) error {
-	if err := a.checkExpires(ctx); err != nil {
-		return err
-	}
 	return agents.Execute(ctx, a, a.workDir, skill, userInput, events, allowAll)
 }
 
 func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []ttypes.Tool) (*agents.OpenAIOutput, error) {
-	result, _, err := utils.POSTJson[agents.OpenAIOutput](ctx, a.httpClient, chatAPI, map[string]string{
+	if err := a.checkExpires(ctx); err != nil {
+		return nil, fmt.Errorf("failed to refresh token: %w", err)
+	}
+
+	result, _, err := utils.POST[agents.OpenAIOutput](ctx, a.httpClient, chatAPI, map[string]string{
 		"Authorization":  "Bearer " + a.Refresh.Token,
 		"Editor-Version": "vscode/1.95.0",
 	}, map[string]any{
 		"model":    defaultModel,
 		"messages": messages,
 		"tools":    tools,
-	})
+	}, "json")
 	if err != nil {
 		return nil, fmt.Errorf("API request: %w", err)
 	}

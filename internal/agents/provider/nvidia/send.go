@@ -25,14 +25,14 @@ func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput strin
 }
 
 func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []ttypes.Tool) (*agents.OpenAIOutput, error) {
-	result, _, err := utils.POSTJson[agents.OpenAIOutput](ctx, a.httpClient, chatAPI, map[string]string{
+	result, _, err := utils.POST[agents.OpenAIOutput](ctx, a.httpClient, chatAPI, map[string]string{
 		"Authorization": "Bearer " + a.apiKey,
 		"Content-Type":  "application/json",
 	}, map[string]any{
 		"model":    defaultModel,
 		"messages": messages,
 		"tools":    tools,
-	})
+	}, "json")
 	if err != nil {
 		return nil, fmt.Errorf("API request: %w", err)
 	}

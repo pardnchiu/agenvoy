@@ -234,6 +234,7 @@ func systemPrompt(workPath string, skill *skill.Skill) string {
 		return strings.NewReplacer(
 			"{{.WorkPath}}", workPath,
 			"{{.Date}}", dateStr,
+			"{{.Content}}", "",
 		).Replace(sysPromptBase)
 	}
 	content := skill.Content

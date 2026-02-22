@@ -1,9 +1,9 @@
 package utils
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -38,73 +38,58 @@ func GET[T any](ctx context.Context, client *http.Client, api string, header map
 	return result, statusCode, nil
 }
 
-func POSTForm[T any](ctx context.Context, client *http.Client, api string, header map[string]string, form url.Values) (T, int, error) {
+func POST[T any](ctx context.Context, client *http.Client, api string, header map[string]string, body map[string]any, contentType string) (T, int, error) {
 	var result T
 
-	if client == nil {
-		client = &http.Client{}
+	if contentType == "" {
+		contentType = "json"
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", api, strings.NewReader(form.Encode()))
-	if err != nil {
-		return result, 0, err
+	var req *http.Request
+	var err error
+	if contentType == "form" {
+		requestBody := url.Values{}
+		for k, v := range body {
+			requestBody.Set(k, fmt.Sprint(v))
+		}
+
+		req, err = http.NewRequestWithContext(ctx, "POST", api, strings.NewReader(requestBody.Encode()))
+		if err != nil {
+			return result, 0, err
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	} else {
+		requestBody, err := json.Marshal(body)
+		if err != nil {
+			return result, 0, fmt.Errorf("failed to marshal body: %w", err)
+		}
+
+		req, err = http.NewRequestWithContext(ctx, "POST", api, strings.NewReader(string(requestBody)))
+		if err != nil {
+			return result, 0, fmt.Errorf("failed to create request: %w", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
 	}
 
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 
 	for k, v := range header {
 		req.Header.Set(k, v)
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return result, 0, err
-	}
-	defer resp.Body.Close()
-
-	statusCode := resp.StatusCode
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return result, statusCode, err
-	}
-	return result, statusCode, nil
-}
-
-func POSTJson[T any](ctx context.Context, client *http.Client, api string, header map[string]string, body any) (T, int, error) {
-	var result T
-
 	if client == nil {
 		client = &http.Client{}
 	}
-
-	jsonBody, err := json.Marshal(body)
-	if err != nil {
-		return result, 0, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", api, bytes.NewReader(jsonBody))
-	if err != nil {
-		return result, 0, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-
-	for k, v := range header {
-		req.Header.Set(k, v)
-	}
-
 	resp, err := client.Do(req)
 	if err != nil {
-		return result, 0, err
+		return result, 0, fmt.Errorf("failed to send: %w", err)
 	}
 	defer resp.Body.Close()
 
 	statusCode := resp.StatusCode
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return result, statusCode, err
+		return result, statusCode, fmt.Errorf("failed to read: %w", err)
 	}
 	return result, statusCode, nil
 }

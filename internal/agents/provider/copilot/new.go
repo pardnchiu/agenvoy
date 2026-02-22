@@ -63,10 +63,5 @@ func New() (*Agent, error) {
 	}
 	agent.Token = token
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	agent.checkExpires(ctx)
-
 	return agent, nil
 }
