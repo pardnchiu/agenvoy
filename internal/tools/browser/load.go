@@ -1,4 +1,4 @@
-package fetchPage
+package browser
 
 import (
 	"context"

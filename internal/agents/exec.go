@@ -179,12 +179,27 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 				}
 
 				if !allowAll {
-
+					replyCh := make(chan bool, 1)
 					events <- atypes.Event{
 						Type:     atypes.EventToolConfirm,
 						ToolName: toolName,
 						ToolArgs: e.Function.Arguments,
 						ToolID:   e.ID,
+						ReplyCh:  replyCh,
+					}
+					proceed := <-replyCh
+					if !proceed {
+						events <- atypes.Event{
+							Type:     atypes.EventToolSkipped,
+							ToolName: toolName,
+							ToolID:   e.ID,
+						}
+						messages = append(messages, Message{
+							Role:       "tool",
+							Content:    "Tool execution skipped by user.",
+							ToolCallID: e.ID,
+						})
+						continue
 					}
 				}
 

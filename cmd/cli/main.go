@@ -72,8 +72,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		// skillName := os.Args[2]
-		// userInput := os.Args[3]
 		allowAll := slices.Contains(os.Args[3:], "--allow")
 
 		agent := selectAgent()
@@ -85,10 +83,11 @@ func main() {
 			if targetSkill, ok := scanner.Skills.ByName[os.Args[2]]; ok {
 				// 明確指定 skill：run <skill_name> <input>
 				userInput := os.Args[3]
-				ctx := context.Background()
-				if err := runWithEvents(ctx, func(ch chan<- atypes.Event) error {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				if err := runWithEvents(ctx, cancel, func(ch chan<- atypes.Event) error {
 					return agent.Execute(ctx, targetSkill, userInput, ch, allowAll)
-				}); err != nil {
+				}); err != nil && ctx.Err() == nil {
 					slog.Error("failed to execute skill", slog.String("error", err.Error()))
 					os.Exit(1)
 				}
@@ -98,11 +97,11 @@ func main() {
 		}
 
 		userInput := os.Args[2]
-		allowAll = slices.Contains(os.Args[3:], "--allow")
-		ctx := context.Background()
-		if err := runWithEvents(ctx, func(ch chan<- atypes.Event) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		if err := runWithEvents(ctx, cancel, func(ch chan<- atypes.Event) error {
 			return agents.ExecuteAuto(ctx, agent, scanner, userInput, ch, allowAll)
-		}); err != nil {
+		}); err != nil && ctx.Err() == nil {
 			slog.Error("failed to execute", slog.String("error", err.Error()))
 			os.Exit(1)
 		}
@@ -125,6 +124,7 @@ func main() {
 	}
 
 }
+
 
 func printTool(ev atypes.Event) {
 	var args map[string]any
@@ -166,7 +166,7 @@ func printContent(ev atypes.Event) {
 	fmt.Print("──────────────────────────────────────────────────\033[0m\n")
 }
 
-func runWithEvents(_ context.Context, fn func(chan<- atypes.Event) error) error {
+func runWithEvents(_ context.Context, cancel context.CancelFunc, fn func(chan<- atypes.Event) error) error {
 	ch := make(chan atypes.Event, 16)
 	var execErr error
 
@@ -185,17 +185,25 @@ func runWithEvents(_ context.Context, fn func(chan<- atypes.Event) error) error 
 
 		case atypes.EventToolConfirm:
 			prompt := promptui.Select{
-				Label: "Continue?",
-				Items: []string{"Yes", "Skip", "Stop"},
-				Size:  3, HideSelected: true,
+				Label:        fmt.Sprintf("Run %s?", ev.ToolName),
+				Items:        []string{"Yes", "Skip", "Stop"},
+				Size:         3,
+				HideSelected: true,
 			}
 			idx, _, err := prompt.Run()
-			if err != nil || idx == 1 {
-				fmt.Printf("[x] User skipped\n")
-			} else if idx == 2 {
+			if err != nil || idx == 2 {
 				fmt.Printf("[x] User stopped\n")
-				return nil
+				cancel()
+				ev.ReplyCh <- false
+			} else if idx == 1 {
+				fmt.Printf("[x] User skipped: %s\n", ev.ToolName)
+				ev.ReplyCh <- false
+			} else {
+				ev.ReplyCh <- true
 			}
+
+		case atypes.EventToolSkipped:
+			fmt.Printf("[x] Skipped: %s\n", ev.ToolName)
 
 		case atypes.EventToolResult:
 			if ev.ToolName == "write_file" {

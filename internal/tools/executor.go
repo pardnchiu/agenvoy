@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	"github.com/pardnchiu/go-agent-skills/internal/tools/apiAdapter"
-	"github.com/pardnchiu/go-agent-skills/internal/tools/apis/fetchPage"
 	"github.com/pardnchiu/go-agent-skills/internal/tools/apis/googleRSS"
 	"github.com/pardnchiu/go-agent-skills/internal/tools/apis/weatherReport"
 	"github.com/pardnchiu/go-agent-skills/internal/tools/apis/yahooFinance"
+	"github.com/pardnchiu/go-agent-skills/internal/tools/browser"
 	"github.com/pardnchiu/go-agent-skills/internal/tools/file"
 	"github.com/pardnchiu/go-agent-skills/internal/tools/types"
 )
@@ -203,7 +203,7 @@ func Execute(e *types.Executor, name string, args json.RawMessage) (string, erro
 			return "", fmt.Errorf("failed to unmarshal json (%s): %w", name, err)
 		}
 
-		result, err := fetchPage.Load(params.URL)
+		result, err := browser.Load(params.URL)
 		if err != nil {
 			return "", err
 		}
