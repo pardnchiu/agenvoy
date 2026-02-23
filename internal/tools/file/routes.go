@@ -37,6 +37,16 @@ func Routes(e *types.Executor, name string, args json.RawMessage) (string, error
 		}
 		return glob(e, params.Pattern)
 
+	case "search_content":
+		var params struct {
+			Pattern     string `json:"pattern"`
+			FilePattern string `json:"file_pattern"`
+		}
+		if err := json.Unmarshal(args, &params); err != nil {
+			return "", fmt.Errorf("json.Unmarshal: %w", err)
+		}
+		return search(e, params.Pattern, params.FilePattern)
+
 	case "write_file":
 		var params struct {
 			Path    string `json:"path"`

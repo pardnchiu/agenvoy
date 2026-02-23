@@ -9,9 +9,7 @@ import (
 	"strings"
 
 	"github.com/pardnchiu/go-agent-skills/internal/tools/apiAdapter"
-	"github.com/pardnchiu/go-agent-skills/internal/tools/apis/googleRSS"
-	"github.com/pardnchiu/go-agent-skills/internal/tools/apis/weatherReport"
-	"github.com/pardnchiu/go-agent-skills/internal/tools/apis/yahooFinance"
+	"github.com/pardnchiu/go-agent-skills/internal/tools/apis"
 	"github.com/pardnchiu/go-agent-skills/internal/tools/browser"
 	"github.com/pardnchiu/go-agent-skills/internal/tools/file"
 	"github.com/pardnchiu/go-agent-skills/internal/tools/types"
@@ -79,18 +77,11 @@ func Execute(e *types.Executor, name string, args json.RawMessage) (string, erro
 	}
 
 	switch name {
-	case "read_file", "list_files", "glob_files", "write_file", "patch_edit":
+	case "read_file", "list_files", "glob_files", "search_content", "write_file", "patch_edit":
 		return file.Routes(e, name, args)
 
-	case "search_content":
-		var params struct {
-			Pattern     string `json:"pattern"`
-			FilePattern string `json:"file_pattern"`
-		}
-		if err := json.Unmarshal(args, &params); err != nil {
-			return "", fmt.Errorf("json.Unmarshal: %w", err)
-		}
-		return searchContent(e, params.Pattern, params.FilePattern)
+	case "send_http_request", "fetch_yahoo_finance", "fetch_google_rss", "fetch_weather":
+		return apis.Routes(e, name, args)
 
 	case "run_command":
 		var params struct {
@@ -100,54 +91,6 @@ func Execute(e *types.Executor, name string, args json.RawMessage) (string, erro
 			return "", fmt.Errorf("json.Unmarshal: %w", err)
 		}
 		return runCommand(e, params.Command)
-
-	case "fetch_yahoo_finance":
-		var params struct {
-			Symbol   string `json:"symbol"`
-			Interval string `json:"interval"`
-			Range    string `json:"range"`
-		}
-		if err := json.Unmarshal(args, &params); err != nil {
-			return "", fmt.Errorf("json.Unmarshal: %w", err)
-		}
-		return yahooFinance.Fetch(params.Symbol, params.Interval, params.Range)
-
-	case "fetch_google_rss":
-		var params struct {
-			Keyword string `json:"keyword"`
-			Time    string `json:"time"`
-			Lang    string `json:"lang"`
-		}
-		if err := json.Unmarshal(args, &params); err != nil {
-			return "", fmt.Errorf("json.Unmarshal: %w", err)
-		}
-		return googleRSS.Fetch(params.Keyword, params.Time, params.Lang)
-
-	case "send_http_request":
-		var params struct {
-			URL         string            `json:"url"`
-			Method      string            `json:"method"`
-			Headers     map[string]string `json:"headers"`
-			Body        map[string]any    `json:"body"`
-			ContentType string            `json:"content_type"`
-			Timeout     int               `json:"timeout"`
-		}
-		if err := json.Unmarshal(args, &params); err != nil {
-			return "", fmt.Errorf("json.Unmarshal: %w", err)
-		}
-		return apiAdapter.Send(params.URL, params.Method, params.Headers, params.Body, params.ContentType, params.Timeout)
-
-	case "fetch_weather":
-		var params struct {
-			City           string      `json:"city"`
-			Days           int         `json:"days"`
-			HourlyInterval json.Number `json:"hourly_interval"`
-		}
-		if err := json.Unmarshal(args, &params); err != nil {
-			return "", fmt.Errorf("failed to unmarshal json (%s): %w", name, err)
-		}
-		hourlyInterval, _ := params.HourlyInterval.Int64()
-		return weatherReport.Fetch(params.City, params.Days, int(hourlyInterval))
 
 	case "fetch_page":
 		var params struct {
