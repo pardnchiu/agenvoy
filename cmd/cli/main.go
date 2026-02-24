@@ -85,6 +85,7 @@ func main() {
 				userInput := os.Args[3]
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
+
 				if err := runWithEvents(ctx, cancel, func(ch chan<- atypes.Event) error {
 					return agent.Execute(ctx, targetSkill, userInput, ch, allowAll)
 				}); err != nil && ctx.Err() == nil {
@@ -124,7 +125,6 @@ func main() {
 	}
 
 }
-
 
 func printTool(ev atypes.Event) {
 	var args map[string]any

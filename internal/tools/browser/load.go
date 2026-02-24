@@ -13,6 +13,7 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
 
 //go:embed embed/stealth.js
@@ -40,13 +41,10 @@ func Load(url string) (string, error) {
 	hash := sha256.Sum256([]byte(url))
 	cacheKey := hex.EncodeToString(hash[:])
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("get home dir: %w", err)
-	}
-	cacheDir := filepath.Join(homeDir, ".config", "go-agent-skills", "fetched")
-	clean(cacheDir, cacheExpiry)
-	cachePath := filepath.Join(cacheDir, cacheKey+".md")
+	configDir, err := utils.ConfigDir("tools", "browser", "cached")
+
+	clean(configDir.Home, cacheExpiry)
+	cachePath := filepath.Join(configDir.Home, cacheKey+".md")
 
 	if info, err := os.Stat(cachePath); err == nil {
 		if time.Since(info.ModTime()) < cacheExpiry {
@@ -66,9 +64,9 @@ func Load(url string) (string, error) {
 	}
 	result := content.Markdown
 
-	if err := os.MkdirAll(cacheDir, 0755); err == nil {
-		_ = os.WriteFile(cachePath, []byte(result), 0644)
-	}
+	// * if wrote err, then skip
+	_ = os.WriteFile(cachePath, []byte(result), 0644)
+
 	return result, nil
 }
 

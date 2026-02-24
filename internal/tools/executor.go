@@ -1,12 +1,10 @@
 package tools
 
 import (
-	_ "embed"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/pardnchiu/go-agent-skills/internal/tools/apiAdapter"
@@ -16,6 +14,7 @@ import (
 	"github.com/pardnchiu/go-agent-skills/internal/tools/calculator"
 	"github.com/pardnchiu/go-agent-skills/internal/tools/file"
 	"github.com/pardnchiu/go-agent-skills/internal/tools/types"
+	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
 
 //go:embed embed/tools.json
@@ -41,11 +40,10 @@ func NewExecutor(workPath string) (*types.Executor, error) {
 	}
 
 	apiToolbox := apiAdapter.New()
-	apiToolbox.Load(filepath.Join(workPath, ".config", "apis"))
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		apiToolbox.Load(filepath.Join(home, ".config", "go-agent-skills", "apis"))
+	if configDir, err := utils.ConfigDir("apis"); err == nil {
+		apiToolbox.Load(configDir.Home)
+		apiToolbox.Load(configDir.Work)
 	}
 
 	for _, tool := range apiToolbox.GetTools() {

@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -119,4 +121,42 @@ func POST[T any](ctx context.Context, client *http.Client, api string, header ma
 		return result, statusCode, fmt.Errorf("failed to read: %w", err)
 	}
 	return result, statusCode, nil
+}
+
+const (
+	projectName = "go-agent-skills"
+)
+
+type ConfigDirData struct {
+	Home string
+	Work string
+}
+
+func ConfigDir(path ...string) (*ConfigDirData, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("os.UserHomeDir: %w", err)
+	}
+
+	workDir, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("os.Getwd: %w", err)
+	}
+
+	config := &ConfigDirData{
+		Home: filepath.Join(append([]string{homeDir, ".config", projectName}, path...)...),
+		Work: filepath.Join(append([]string{workDir, ".config", projectName}, path...)...),
+	}
+
+	err = os.MkdirAll(config.Home, 0755)
+	if err != nil {
+		return nil, fmt.Errorf("os.MkdirAll: %w", err)
+	}
+
+	err = os.MkdirAll(config.Work, 0755)
+	if err != nil {
+		return nil, fmt.Errorf("os.MkdirAll: %w", err)
+	}
+
+	return config, nil
 }

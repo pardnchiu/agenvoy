@@ -43,8 +43,6 @@ cp .env.example .env
 | `ANTHROPIC_API_KEY` | 否 | Anthropic Claude API 金鑰 |
 | `GEMINI_API_KEY` | 否 | Google Gemini API 金鑰 |
 | `NVIDIA_API_KEY` | 否 | Nvidia API 金鑰 |
-| `BRAVE_API_KEY` | 否 | Brave Search API 金鑰（供 `search_web` 使用）；未設定時退回 DuckDuckGo |
-| `BRAVE_QUOTA_FALLBACK` | 否 | 設為 `1` 時，每月 Brave 配額（1,000 次）用盡後自動退回 DuckDuckGo；預設 `0` 則在配額耗盡時回傳錯誤 |
 
 **注意：** GitHub Copilot 使用 Device Code 登入流程，不需要環境變數。
 
@@ -162,7 +160,7 @@ Found 3 skill(s):
 1. 終端機顯示認證 URL 與 User Code
 2. 在瀏覽器開啟 URL 並輸入 User Code
 3. 完成 GitHub 授權
-4. Token 自動儲存至 `~/.config/github-copilot/`
+4. Token 自動儲存至 `~/.config/go-agent-skills/`
 
 Token 會在過期前自動更新，無需手動管理。
 
@@ -184,7 +182,7 @@ Token 會在過期前自動更新，無需手動管理。
 | `send_http_request` | `url`, `method?`, `headers?`, `body?`, `content_type?`, `timeout?` | 通用 HTTP 請求；method 預設 `GET`，timeout 最大 300 秒 |
 | `fetch_weather` | `city?`, `days?`, `hourly_interval?` | 透過 wttr.in 取得天氣預報；`days=-1` 僅回當前狀況，預設三天預報 |
 | `fetch_page` | `url` | 以 Chrome 無頭瀏覽器開啟網址，等待 JS 完整渲染後以 Markdown 格式返回頁面內容 |
-| `search_web` | `query`, `range?`, `limit?` | 透過 Brave Search + DuckDuckGo 搜尋網路；`range`: `1h`/`3h`/`6h`/`12h`/`1d`/`7d`/`1m`/`1y`；`limit` 最大 50 |
+| `search_web` | `query`, `range?`, `limit?` | 透過 DuckDuckGo 搜尋網路；`range`: `1h`/`3h`/`6h`/`12h`/`1d`/`7d`/`1m`/`1y`；`limit` 最大 50 |
 | `calculate` | `expression` | 計算數學表達式；支援 `+`、`-`、`*`、`/`、`%`、`^`（冪次）、`()` 及函式：`sqrt`、`abs`、`pow(base,exp)`、`ceil`、`floor`、`round`、`log`、`log2`、`log10`、`sin`、`cos`、`tan` |
 
 #### run_command 安全機制
@@ -214,19 +212,6 @@ awk, ls, pwd, echo, date, wc, head, tail, sort, uniq
 - `chmod`、`chown`
 - `dd`、`mkfs`
 - 任何非白名單的二進位檔案
-
-#### search_web API Key 設定
-
-設定 `BRAVE_API_KEY` 後，`search_web` 會同時查詢 Brave Search 與 DuckDuckGo，並合併去重後回傳結果。未設定時僅使用 DuckDuckGo。
-
-Brave Search 免費方案每月限制 **1,000 次請求**，使用量會記錄於本地 `~/.config/go-agent-skills/brave_quota.json`。
-
-| 情境 | 行為 |
-|------|------|
-| 未設定 `BRAVE_API_KEY` | 僅使用 DuckDuckGo |
-| 設定 `BRAVE_API_KEY`，配額未耗盡 | Brave + DuckDuckGo 並行 |
-| 設定 `BRAVE_API_KEY`，配額耗盡，`BRAVE_QUOTA_FALLBACK=0`（預設） | 回傳錯誤 |
-| 設定 `BRAVE_API_KEY`，配額耗盡，`BRAVE_QUOTA_FALLBACK=1` | 退回 DuckDuckGo |
 
 #### 動態 API 工具擴展（api.json）
 

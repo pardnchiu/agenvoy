@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
 
 type Token struct {
@@ -32,15 +34,15 @@ func New() (*Agent, error) {
 		return nil, fmt.Errorf("os.Getwd: %w", err)
 	}
 
-	homeDir, err := os.UserHomeDir()
+	configDir, err := utils.ConfigDir()
 	if err != nil {
-		return nil, fmt.Errorf("os.UserHomeDir: %w", err)
+		return nil, fmt.Errorf("utils.ConfigDir(: %w", err)
 	}
 
 	agent := &Agent{
 		httpClient: &http.Client{},
 		workDir:    workDir,
-		tokenDir:   filepath.Join(homeDir, ".config", "go-agent-skills", "copilot_token.json"),
+		tokenDir:   filepath.Join(configDir.Home, "copilot_token.json"),
 	}
 
 	var token *Token

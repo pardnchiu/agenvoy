@@ -40,11 +40,8 @@ func NewScanner() *Scanner {
 	paths := []string{
 		filepath.Join(cwd, ".claude", "skills"),
 		filepath.Join(cwd, ".skills"),
-		// Claude
 		filepath.Join(home, ".claude", "skills"),
-		// OpenCode
 		filepath.Join(home, ".opencode", "skills"),
-		// OpenAI / Codex
 		filepath.Join(home, ".openai", "skills"),
 		filepath.Join(home, ".codex", "skills"),
 		"/mnt/skills/public",

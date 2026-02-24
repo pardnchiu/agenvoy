@@ -14,10 +14,14 @@ import (
 	"github.com/pardnchiu/go-agent-skills/internal/skill"
 	"github.com/pardnchiu/go-agent-skills/internal/tools"
 	ttypes "github.com/pardnchiu/go-agent-skills/internal/tools/types"
+	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
 
-//go:embed prompt/sysprompt.md
+//go:embed prompt/sysPrompt.md
 var sysPrompt string
+
+//go:embed prompt/summaryPrompt.md
+var summaryPrompt string
 
 //go:embed prompt/sysPromptBase.md
 var sysPromptBase string
@@ -68,7 +72,10 @@ func ExecuteAuto(ctx context.Context, agent Agent, scanner *skill.Scanner, userI
 
 	matched := selectSkill(ctx, agent, scanner, userInput)
 	if matched != nil {
-		events <- atypes.Event{Type: atypes.EventText, Text: fmt.Sprintf("Auto-selected skill: %s", matched.Name)}
+		events <- atypes.Event{
+			Type: atypes.EventText,
+			Text: fmt.Sprintf("Auto-selected skill: %s", matched.Name),
+		}
 		return Execute(ctx, agent, workDir, matched, userInput, events, allowAll)
 	}
 
@@ -133,17 +140,78 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 	if err != nil {
 		return fmt.Errorf("tools.NewExecutor: %w", err)
 	}
+	now := time.Now()
+	dateStr := now.Format("2006-01-02T15:04:05 MST (UTC-07:00)")
 
 	systemPrompt := systemPrompt(workDir, skill)
+	toolActions := []Message{}
+	history := []Message{
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: fmt.Sprintf("當前時間：%s\n%s", dateStr, userInput)},
+	}
 	messages := []Message{
-		{
-			Role:    "system",
-			Content: systemPrompt,
-		},
-		{
-			Role:    "user",
-			Content: userInput,
-		},
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: fmt.Sprintf("當前時間：%s\n%s", dateStr, userInput)},
+	}
+
+	configDir, err := utils.ConfigDir("sessions")
+
+	indexPath := filepath.Join(configDir.Home, "index.json")
+	var sessionID string
+	if data, err := os.ReadFile(indexPath); err == nil {
+		var indexData struct {
+			SessionID string `json:"session_id"`
+		}
+		if err := json.Unmarshal(data, &indexData); err == nil {
+			sessionID = indexData.SessionID
+
+			var summary string
+			data, err := os.ReadFile(filepath.Join(configDir.Home, sessionID, "summary.json"))
+			if err == nil {
+				summary = strings.NewReplacer(
+					"{{.Summary}}", string(data),
+				).Replace(summaryPrompt)
+			}
+
+			data, err = os.ReadFile(filepath.Join(configDir.Home, sessionID, "history.json"))
+			if err == nil {
+				var oldHistory []Message
+				if err := json.Unmarshal(data, &oldHistory); err == nil {
+					history = oldHistory
+				}
+				history = append(history, Message{Role: "user", Content: fmt.Sprintf("當前時間：%s\n%s", dateStr, userInput)})
+
+				recentHistory := oldHistory
+				if len(recentHistory) > 4 {
+					recentHistory = recentHistory[len(recentHistory)-4:]
+				}
+
+				messages = []Message{
+					{Role: "system", Content: systemPrompt},
+				}
+				messages = append(messages, Message{Role: "system", Content: summary})
+				messages = append(messages, recentHistory...)
+				messages = append(messages, Message{Role: "user", Content: fmt.Sprintf("當前時間：%s\n%s", dateStr, userInput)})
+			}
+		}
+	} else {
+		sessionID = fmt.Sprintf("%d", time.Now().UnixNano())
+		indexData := struct {
+			SessionID string `json:"session_id"`
+		}{SessionID: sessionID}
+
+		indexBytes, err := json.Marshal(indexData)
+		if err != nil {
+			return fmt.Errorf("json.Marshal: %w", err)
+		}
+		if err := os.WriteFile(indexPath, indexBytes, 0644); err != nil {
+			return fmt.Errorf("os.WriteFile: %w", err)
+		}
+	}
+
+	err = os.MkdirAll(filepath.Join(configDir.Home, sessionID), 0755)
+	if err != nil {
+		return fmt.Errorf("os.MkdirAll: %w", err)
 	}
 
 	for i := 0; i < MaxToolIterations; i++ {
@@ -194,6 +262,11 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 							ToolName: toolName,
 							ToolID:   e.ID,
 						}
+						toolActions = append(toolActions, Message{
+							Role:       "tool",
+							Content:    fmt.Sprintf("Tool '%s' execution skipped by user.", toolName),
+							ToolCallID: e.ID,
+						})
 						messages = append(messages, Message{
 							Role:       "tool",
 							Content:    "Tool execution skipped by user.",
@@ -214,7 +287,11 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 					ToolID:   e.ID,
 					Result:   result,
 				}
-
+				toolActions = append(toolActions, Message{
+					Role:       "tool",
+					Content:    fmt.Sprintf("Tool '%s' executed with result: %s", toolName, result),
+					ToolCallID: e.ID,
+				})
 				messages = append(messages, Message{
 					Role:       "tool",
 					Content:    result,
@@ -227,11 +304,75 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 		switch v := choice.Message.Content.(type) {
 		case string:
 			if v != "" {
-				events <- atypes.Event{Type: atypes.EventText, Text: v}
+				const summaryStart = "<!--SUMMARY_START-->"
+				const summaryEnd = "<!--SUMMARY_END-->"
+
+				var jsonData any
+				var cleaned string
+
+				start := strings.Index(v, summaryStart)
+				end := strings.Index(v, summaryEnd)
+				if start != -1 && end != -1 && end > start {
+					jsonPart := strings.TrimSpace(v[start+len(summaryStart) : end])
+					json.Unmarshal([]byte(jsonPart), &jsonData)
+					cleaned = strings.TrimRight(v[:start], " \t\n\r")
+				} else {
+					cleaned = v
+				}
+
+				if jsonData != nil {
+					path := filepath.Join(configDir.Home, sessionID, "summary.json")
+					data, err := json.Marshal(jsonData)
+					if err == nil {
+						os.WriteFile(path, data, 0644)
+					}
+				}
+
+				now := time.Now()
+				dateStr := now.Format("2006-01-02T15:04:05 MST (UTC-07:00)")
+				choice.Message.Content = fmt.Sprintf("當前時間：%s\n%s", dateStr, cleaned)
+				messages = append(messages, choice.Message)
+				history = append(history, choice.Message)
+
+				events <- atypes.Event{Type: atypes.EventText, Text: cleaned}
 			}
 		case nil:
 		default:
 			return fmt.Errorf("unexpected content type: %T", choice.Message.Content)
+		}
+
+		filtered := make([]Message, 0, len(history))
+		for i, m := range history {
+			if m.Role == "system" && i > 0 {
+				continue
+			}
+			if m.Role == "assistant" && len(m.ToolCalls) > 0 {
+				continue
+			}
+			if m.Role == "tool" {
+				continue
+			}
+			filtered = append(filtered, m)
+		}
+
+		historyPath := filepath.Join(configDir.Home, sessionID, "history.json")
+		historyData, err := json.Marshal(filtered)
+		if err != nil {
+			return fmt.Errorf("json.Marshal: %w", err)
+		}
+		if err := os.WriteFile(historyPath, historyData, 0644); err != nil {
+			return fmt.Errorf("os.WriteFile: %w", err)
+		}
+
+		if len(toolActions) > 0 {
+			toolActionsDir := filepath.Join(configDir.Work, sessionID)
+			if err := os.MkdirAll(toolActionsDir, 0755); err == nil {
+				filename := time.Now().Format("2006-01-02-03-04-05") + ".json"
+				toolActionsPath := filepath.Join(toolActionsDir, filename)
+				if data, err := json.Marshal(toolActions); err == nil {
+					os.WriteFile(toolActionsPath, data, 0644)
+				}
+			}
 		}
 
 		events <- atypes.Event{Type: atypes.EventDone}
@@ -242,13 +383,9 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 }
 
 func systemPrompt(workPath string, skill *skill.Skill) string {
-	now := time.Now()
-	dateStr := now.Format("2006-01-02T15:04:05 MST (UTC-07:00)")
-
 	if skill == nil {
 		return strings.NewReplacer(
 			"{{.WorkPath}}", workPath,
-			"{{.Date}}", dateStr,
 			"{{.Content}}", "",
 		).Replace(sysPromptBase)
 	}
@@ -266,6 +403,5 @@ func systemPrompt(workPath string, skill *skill.Skill) string {
 		"{{.WorkPath}}", workPath,
 		"{{.SkillPath}}", skill.Path,
 		"{{.Content}}", content,
-		"{{.Date}}", dateStr,
 	).Replace(sysPrompt)
 }

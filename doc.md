@@ -43,8 +43,6 @@ cp .env.example .env
 | `ANTHROPIC_API_KEY` | No | Anthropic Claude API key |
 | `GEMINI_API_KEY` | No | Google Gemini API key |
 | `NVIDIA_API_KEY` | No | Nvidia API key |
-| `BRAVE_API_KEY` | No | Brave Search API key (used by `search_web`); falls back to DuckDuckGo if not set |
-| `BRAVE_QUOTA_FALLBACK` | No | Set to `1` to fall back to DuckDuckGo when monthly Brave quota (1,000 requests) is exhausted; default `0` returns an error on quota exceeded |
 
 **Note:** GitHub Copilot uses Device Code authentication flow and does not require environment variables.
 
@@ -162,7 +160,7 @@ When using Copilot Agent for the first time, the system automatically initiates 
 1. Terminal displays authentication URL and User Code
 2. Open URL in browser and enter User Code
 3. Complete GitHub authorization
-4. Token automatically saved to `~/.config/github-copilot/`
+4. Token automatically saved to `~/.config/go-agent-skills/`
 
 Tokens are automatically refreshed before expiration without manual management.
 
@@ -184,7 +182,7 @@ All Agents share the following tool collection:
 | `send_http_request` | `url`, `method?`, `headers?`, `body?`, `content_type?`, `timeout?` | Generic HTTP request; method defaults to `GET`, timeout up to 300s |
 | `fetch_weather` | `city?`, `days?`, `hourly_interval?` | Weather forecast via wttr.in; `days=-1` for current only, default 3-day forecast |
 | `fetch_page` | `url` | Open URL in headless Chrome, wait for full JS render, return content as Markdown |
-| `search_web` | `query`, `range?`, `limit?` | Web search via Brave Search + DuckDuckGo fallback; `range`: `1h`/`3h`/`6h`/`12h`/`1d`/`7d`/`1m`/`1y`; `limit` max 50 |
+| `search_web` | `query`, `range?`, `limit?` | Web search via DuckDuckGo; `range`: `1h`/`3h`/`6h`/`12h`/`1d`/`7d`/`1m`/`1y`; `limit` max 50 |
 | `calculate` | `expression` | Evaluate math expression; supports `+`, `-`, `*`, `/`, `%`, `^` (power), `()`, and functions: `sqrt`, `abs`, `pow(base,exp)`, `ceil`, `floor`, `round`, `log`, `log2`, `log10`, `sin`, `cos`, `tan` |
 
 #### run_command Safety Mechanisms
@@ -214,19 +212,6 @@ The following commands are not whitelisted and will be rejected:
 - `chmod`, `chown`
 - `dd`, `mkfs`
 - Any non-whitelisted binaries
-
-#### search_web API Key Configuration
-
-`search_web` queries both Brave Search and DuckDuckGo concurrently when `BRAVE_API_KEY` is set, then merges and deduplicates results. Without the key, only DuckDuckGo is used.
-
-Brave Search free plan allows **1,000 requests per month**. Usage is tracked locally at `~/.config/go-agent-skills/brave_quota.json`.
-
-| Variable | Effect |
-|----------|--------|
-| `BRAVE_API_KEY` unset | DuckDuckGo only |
-| `BRAVE_API_KEY` set, quota not exceeded | Brave + DuckDuckGo concurrent |
-| `BRAVE_API_KEY` set, quota exceeded, `BRAVE_QUOTA_FALLBACK=0` (default) | Error returned |
-| `BRAVE_API_KEY` set, quota exceeded, `BRAVE_QUOTA_FALLBACK=1` | Falls back to DuckDuckGo |
 
 #### Dynamic API Tool Extension (api.json)
 
