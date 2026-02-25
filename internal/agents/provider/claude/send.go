@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/pardnchiu/go-agent-skills/internal/agents"
+	"github.com/pardnchiu/go-agent-skills/internal/agents/exec"
 	atypes "github.com/pardnchiu/go-agent-skills/internal/agents/types"
 	"github.com/pardnchiu/go-agent-skills/internal/skill"
 	ttypes "github.com/pardnchiu/go-agent-skills/internal/tools/types"
@@ -22,10 +22,10 @@ var (
 )
 
 func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput string, events chan<- atypes.Event, allowAll bool) error {
-	return agents.Execute(ctx, a, a.workDir, skill, userInput, events, allowAll)
+	return exec.Execute(ctx, a, a.workDir, skill, userInput, events, allowAll)
 }
 
-func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []ttypes.Tool) (*agents.OpenAIOutput, error) {
+func (a *Agent) Send(ctx context.Context, messages []exec.Message, tools []ttypes.Tool) (*exec.OpenAIOutput, error) {
 	var systemPrompt string
 	var newMessages []map[string]any
 
@@ -68,7 +68,7 @@ func (a *Agent) Send(ctx context.Context, messages []agents.Message, tools []tty
 	return a.convertToOutput(&result), nil
 }
 
-func (a *Agent) convertToMessage(message agents.Message) map[string]any {
+func (a *Agent) convertToMessage(message exec.Message) map[string]any {
 	if message.ToolCallID != "" {
 		return map[string]any{
 			"role": "user",
@@ -118,16 +118,12 @@ func (a *Agent) convertToTools(tools []ttypes.Tool) []map[string]any {
 	return newTools
 }
 
-func (a *Agent) convertToOutput(resp *Output) *agents.OpenAIOutput {
-	output := &agents.OpenAIOutput{
-		Choices: make([]struct {
-			Message      agents.Message `json:"message"`
-			Delta        agents.Message `json:"delta"`
-			FinishReason string         `json:"finish_reason,omitempty"`
-		}, 1),
+func (a *Agent) convertToOutput(resp *Output) *exec.OpenAIOutput {
+	output := &exec.OpenAIOutput{
+		Choices: make([]exec.OpenAIOutputChoices, 1),
 	}
 
-	var toolCalls []agents.OpenAIToolCall
+	var toolCalls []exec.OpenAIToolCall
 	var textContent string
 
 	for _, item := range resp.Content {
@@ -143,7 +139,7 @@ func (a *Agent) convertToOutput(resp *Output) *agents.OpenAIOutput {
 				arg = string(data)
 			}
 
-			toolCall := agents.OpenAIToolCall{
+			toolCall := exec.OpenAIToolCall{
 				ID:   item.ID,
 				Type: "function",
 			}
@@ -153,7 +149,7 @@ func (a *Agent) convertToOutput(resp *Output) *agents.OpenAIOutput {
 		}
 	}
 
-	output.Choices[0].Message = agents.Message{
+	output.Choices[0].Message = exec.Message{
 		Role:      "assistant",
 		Content:   textContent,
 		ToolCalls: toolCalls,

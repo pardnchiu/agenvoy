@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/manifoldco/promptui"
-	"github.com/pardnchiu/go-agent-skills/internal/agents"
+	"github.com/pardnchiu/go-agent-skills/internal/agents/exec"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/claude"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/copilot"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/gemini"
@@ -100,8 +100,9 @@ func main() {
 		userInput := os.Args[2]
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
+
 		if err := runWithEvents(ctx, cancel, func(ch chan<- atypes.Event) error {
-			return agents.ExecuteAuto(ctx, agent, scanner, userInput, ch, allowAll)
+			return exec.Run(ctx, agent, scanner, userInput, ch, allowAll)
 		}); err != nil && ctx.Err() == nil {
 			slog.Error("failed to execute", slog.String("error", err.Error()))
 			os.Exit(1)
@@ -222,7 +223,7 @@ func runWithEvents(_ context.Context, cancel context.CancelFunc, fn func(chan<- 
 	return execErr
 }
 
-func selectAgent() agents.Agent {
+func selectAgent() exec.Agent {
 	prompt := promptui.Select{
 		Label: "Select Agent",
 		Items: []string{
