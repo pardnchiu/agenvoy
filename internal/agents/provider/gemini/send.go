@@ -20,7 +20,7 @@ func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput strin
 	return exec.Execute(ctx, a, a.workDir, skill, userInput, events, allowAll)
 }
 
-func (a *Agent) Send(ctx context.Context, messages []exec.Message, tools []ttypes.Tool) (*exec.OpenAIOutput, error) {
+func (a *Agent) Send(ctx context.Context, messages []atypes.Message, tools []ttypes.Tool) (*atypes.Output, error) {
 	var systemPrompt string
 	var newMessages []Content
 
@@ -50,7 +50,7 @@ func (a *Agent) Send(ctx context.Context, messages []exec.Message, tools []ttype
 	return a.convertToOutput(&result), nil
 }
 
-func (a *Agent) convertToContent(message exec.Message) Content {
+func (a *Agent) convertToContent(message atypes.Message) Content {
 	content := Content{}
 	if message.ToolCallID != "" {
 		content.Role = "function"
@@ -134,9 +134,9 @@ func (a *Agent) generateRequestBody(messages []Content, prompt string, newTools 
 	return body
 }
 
-func (a *Agent) convertToOutput(resp *Output) *exec.OpenAIOutput {
-	output := &exec.OpenAIOutput{
-		Choices: make([]exec.OpenAIOutputChoices, 1),
+func (a *Agent) convertToOutput(resp *Output) *atypes.Output {
+	output := &atypes.Output{
+		Choices: make([]atypes.OutputChoices, 1),
 	}
 
 	if len(resp.Candidates) == 0 {
@@ -144,7 +144,7 @@ func (a *Agent) convertToOutput(resp *Output) *exec.OpenAIOutput {
 	}
 
 	candidate := resp.Candidates[0]
-	var toolCalls []exec.OpenAIToolCall
+	var toolCalls []atypes.ToolCall
 	var textContent string
 
 	for _, part := range candidate.Content.Parts {
@@ -160,7 +160,7 @@ func (a *Agent) convertToOutput(resp *Output) *exec.OpenAIOutput {
 				args = string(data)
 			}
 
-			toolCall := exec.OpenAIToolCall{
+			toolCall := atypes.ToolCall{
 				ID:   part.FunctionCall.Name,
 				Type: "function",
 			}
@@ -170,7 +170,7 @@ func (a *Agent) convertToOutput(resp *Output) *exec.OpenAIOutput {
 		}
 	}
 
-	output.Choices[0].Message = exec.Message{
+	output.Choices[0].Message = atypes.Message{
 		Role:      "assistant",
 		Content:   textContent,
 		ToolCalls: toolCalls,

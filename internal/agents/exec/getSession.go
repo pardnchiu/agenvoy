@@ -10,27 +10,22 @@ import (
 	"strings"
 	"time"
 
+	atypes "github.com/pardnchiu/go-agent-skills/internal/agents/types"
 	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
-
-type SessionData struct {
-	tools     []Message
-	messages  []Message
-	histories []Message
-}
 
 type IndexData struct {
 	SessionID string `json:"session_id"`
 }
 
-func getSession(prompt string, userInput string) (*SessionData, string, error) {
+func getSession(prompt string, userInput string) (*atypes.AgentSession, string, error) {
 	now := time.Now().Format("2006-01-02T15:04:05 MST (UTC-07:00)")
-	input := SessionData{
-		tools: []Message{},
-		messages: []Message{
+	input := atypes.AgentSession{
+		Tools: []atypes.Message{},
+		Messages: []atypes.Message{
 			{Role: "system", Content: prompt},
 		},
-		histories: []Message{},
+		Histories: []atypes.Message{},
 	}
 
 	configDir, err := utils.GetConfigDir("sessions")
@@ -56,19 +51,19 @@ func getSession(prompt string, userInput string) (*SessionData, string, error) {
 
 			data, err = os.ReadFile(filepath.Join(configDir.Home, sessionID, "history.json"))
 			if err == nil {
-				var oldHistory []Message
+				var oldHistory []atypes.Message
 				if err := json.Unmarshal(data, &oldHistory); err == nil {
-					input.histories = oldHistory
+					input.Histories = oldHistory
 				}
-				input.histories = append(input.histories, Message{Role: "user", Content: fmt.Sprintf("當前時間：%s\n%s", now, userInput)})
+				input.Histories = append(input.Histories, atypes.Message{Role: "user", Content: fmt.Sprintf("當前時間：%s\n%s", now, userInput)})
 
-				input.messages = append(input.messages, Message{Role: "system", Content: summary})
+				input.Messages = append(input.Messages, atypes.Message{Role: "system", Content: summary})
 				recentHistory := oldHistory
 				if len(recentHistory) > 4 {
 					recentHistory = recentHistory[len(recentHistory)-4:]
 				}
-				input.messages = append(input.messages, recentHistory...)
-				input.messages = append(input.messages, Message{Role: "user", Content: fmt.Sprintf("當前時間：%s\n%s", now, userInput)})
+				input.Messages = append(input.Messages, recentHistory...)
+				input.Messages = append(input.Messages, atypes.Message{Role: "user", Content: fmt.Sprintf("當前時間：%s\n%s", now, userInput)})
 			}
 		}
 	} else {
@@ -78,8 +73,8 @@ func getSession(prompt string, userInput string) (*SessionData, string, error) {
 		}
 		indexData := IndexData{SessionID: sessionID}
 
-		input.histories = append(input.histories, Message{Role: "user", Content: fmt.Sprintf("當前時間：%s\n%s", now, userInput)})
-		input.messages = append(input.messages, Message{Role: "user", Content: fmt.Sprintf("當前時間：%s\n%s", now, userInput)})
+		input.Histories = append(input.Histories, atypes.Message{Role: "user", Content: fmt.Sprintf("當前時間：%s\n%s", now, userInput)})
+		input.Messages = append(input.Messages, atypes.Message{Role: "user", Content: fmt.Sprintf("當前時間：%s\n%s", now, userInput)})
 
 		indexDataBytes, err := json.Marshal(indexData)
 		if err != nil {

@@ -11,8 +11,8 @@ import (
 	"github.com/pardnchiu/go-agent-skills/internal/tools/types"
 )
 
-func toolCall(ctx context.Context, exec *types.Executor, choice OpenAIOutputChoices, sessionData *SessionData, events chan<- atypes.Event, allowAll bool, alreadyCall map[string]string) (*SessionData, map[string]string, error) {
-	sessionData.messages = append(sessionData.messages, choice.Message)
+func toolCall(ctx context.Context, exec *types.Executor, choice atypes.OutputChoices, sessionData *atypes.AgentSession, events chan<- atypes.Event, allowAll bool, alreadyCall map[string]string) (*atypes.AgentSession, map[string]string, error) {
+	sessionData.Messages = append(sessionData.Messages, choice.Message)
 
 	for _, tool := range choice.Message.ToolCalls {
 		toolName := tool.Function.Name
@@ -20,7 +20,7 @@ func toolCall(ctx context.Context, exec *types.Executor, choice OpenAIOutputChoi
 
 		hash := fmt.Sprintf("%v|%v", toolName, toolArg)
 		if cached, ok := alreadyCall[hash]; ok && cached != "" {
-			sessionData.messages = append(sessionData.messages, Message{
+			sessionData.Messages = append(sessionData.Messages, atypes.Message{
 				Role:       "tool",
 				Content:    cached,
 				ToolCallID: tool.ID,
@@ -55,12 +55,12 @@ func toolCall(ctx context.Context, exec *types.Executor, choice OpenAIOutputChoi
 					ToolName: toolName,
 					ToolID:   tool.ID,
 				}
-				sessionData.tools = append(sessionData.tools, Message{
+				sessionData.Tools = append(sessionData.Tools, atypes.Message{
 					Role:       "tool",
 					Content:    "Skipped by user",
 					ToolCallID: tool.ID,
 				})
-				sessionData.messages = append(sessionData.messages, Message{
+				sessionData.Messages = append(sessionData.Messages, atypes.Message{
 					Role:       "tool",
 					Content:    "Skipped by user",
 					ToolCallID: tool.ID,
@@ -82,12 +82,12 @@ func toolCall(ctx context.Context, exec *types.Executor, choice OpenAIOutputChoi
 			ToolID:   tool.ID,
 			Result:   result,
 		}
-		sessionData.tools = append(sessionData.tools, Message{
+		sessionData.Tools = append(sessionData.Tools, atypes.Message{
 			Role:       "tool",
 			Content:    fmt.Sprintf("Tool '%s'\nresult: %s", toolName, result),
 			ToolCallID: tool.ID,
 		})
-		sessionData.messages = append(sessionData.messages, Message{
+		sessionData.Messages = append(sessionData.Messages, atypes.Message{
 			Role:       "tool",
 			Content:    fmt.Sprintf("Tool '%s'\nresult: %s", toolName, result),
 			ToolCallID: tool.ID,

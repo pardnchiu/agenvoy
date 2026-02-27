@@ -21,7 +21,7 @@ func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput strin
 	return exec.Execute(ctx, a, a.workDir, skill, userInput, events, allowAll)
 }
 
-func (a *Agent) Send(ctx context.Context, messages []exec.Message, tools []ttypes.Tool) (*exec.OpenAIOutput, error) {
+func (a *Agent) Send(ctx context.Context, messages []atypes.Message, tools []ttypes.Tool) (*atypes.Output, error) {
 	var systemPrompt string
 	var newMessages []map[string]any
 
@@ -64,7 +64,7 @@ func (a *Agent) Send(ctx context.Context, messages []exec.Message, tools []ttype
 	return a.convertToOutput(&result), nil
 }
 
-func (a *Agent) convertToMessage(message exec.Message) map[string]any {
+func (a *Agent) convertToMessage(message atypes.Message) map[string]any {
 	if message.ToolCallID != "" {
 		return map[string]any{
 			"role": "user",
@@ -114,12 +114,12 @@ func (a *Agent) convertToTools(tools []ttypes.Tool) []map[string]any {
 	return newTools
 }
 
-func (a *Agent) convertToOutput(resp *Output) *exec.OpenAIOutput {
-	output := &exec.OpenAIOutput{
-		Choices: make([]exec.OpenAIOutputChoices, 1),
+func (a *Agent) convertToOutput(resp *Output) *atypes.Output {
+	output := &atypes.Output{
+		Choices: make([]atypes.OutputChoices, 1),
 	}
 
-	var toolCalls []exec.OpenAIToolCall
+	var toolCalls []atypes.ToolCall
 	var textContent string
 
 	for _, item := range resp.Content {
@@ -135,7 +135,7 @@ func (a *Agent) convertToOutput(resp *Output) *exec.OpenAIOutput {
 				arg = string(data)
 			}
 
-			toolCall := exec.OpenAIToolCall{
+			toolCall := atypes.ToolCall{
 				ID:   item.ID,
 				Type: "function",
 			}
@@ -145,7 +145,7 @@ func (a *Agent) convertToOutput(resp *Output) *exec.OpenAIOutput {
 		}
 	}
 
-	output.Choices[0].Message = exec.Message{
+	output.Choices[0].Message = atypes.Message{
 		Role:      "assistant",
 		Content:   textContent,
 		ToolCalls: toolCalls,

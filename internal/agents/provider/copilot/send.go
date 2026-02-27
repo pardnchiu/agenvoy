@@ -19,12 +19,12 @@ func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput strin
 	return exec.Execute(ctx, a, a.workDir, skill, userInput, events, allowAll)
 }
 
-func (a *Agent) Send(ctx context.Context, messages []exec.Message, tools []ttypes.Tool) (*exec.OpenAIOutput, error) {
+func (a *Agent) Send(ctx context.Context, messages []atypes.Message, tools []ttypes.Tool) (*atypes.Output, error) {
 	if err := a.checkExpires(ctx); err != nil {
 		return nil, fmt.Errorf("a.checkExpires: %w", err)
 	}
 
-	result, _, err := utils.POST[exec.OpenAIOutput](ctx, a.httpClient, chatAPI, map[string]string{
+	result, _, err := utils.POST[atypes.Output](ctx, a.httpClient, chatAPI, map[string]string{
 		"Authorization":  "Bearer " + a.Refresh.Token,
 		"Editor-Version": "vscode/1.95.0",
 	}, map[string]any{

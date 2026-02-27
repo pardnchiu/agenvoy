@@ -197,13 +197,13 @@ func runWithEvents(_ context.Context, cancel context.CancelFunc, fn func(chan<- 
 	return execErr
 }
 
-func getAgentRegistry() exec.AgentRegistryData {
-	newFn := map[string]func(string) (exec.Agent, error){
-		"copilot": func(m string) (exec.Agent, error) { return copilot.New(m) },
-		"openai":  func(m string) (exec.Agent, error) { return openai.New(m) },
-		"claude":  func(m string) (exec.Agent, error) { return claude.New(m) },
-		"gemini":  func(m string) (exec.Agent, error) { return gemini.New(m) },
-		"nvidia":  func(m string) (exec.Agent, error) { return nvidia.New(m) },
+func getAgentRegistry() atypes.AgentRegistry {
+	newFn := map[string]func(string) (atypes.Agent, error){
+		"copilot": func(m string) (atypes.Agent, error) { return copilot.New(m) },
+		"openai":  func(m string) (atypes.Agent, error) { return openai.New(m) },
+		"claude":  func(m string) (atypes.Agent, error) { return claude.New(m) },
+		"gemini":  func(m string) (atypes.Agent, error) { return gemini.New(m) },
+		"nvidia":  func(m string) (atypes.Agent, error) { return nvidia.New(m) },
 	}
 
 	agentEntries := exec.GetAgentEntries()
@@ -211,9 +211,9 @@ func getAgentRegistry() exec.AgentRegistryData {
 	// registry := make(map[string]exec.Agent, len(agentEntries))
 	// entries := make([]exec.AgentEntryData, 0, len(agentEntries))
 
-	agentRegistry := exec.AgentRegistryData{
-		Registry: make(map[string]exec.Agent, len(agentEntries)),
-		Entries:  make([]exec.AgentEntryData, 0, len(agentEntries)),
+	agentRegistry := atypes.AgentRegistry{
+		Registry: make(map[string]atypes.Agent, len(agentEntries)),
+		Entries:  make([]atypes.AgentEntry, 0, len(agentEntries)),
 	}
 	for _, e := range agentEntries {
 		provider := strings.SplitN(e.Name, "@", 2)[0]

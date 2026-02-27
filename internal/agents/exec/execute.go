@@ -16,7 +16,7 @@ import (
 	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
 
-func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skill, userInput string, events chan<- atypes.Event, allowAll bool) error {
+func Execute(ctx context.Context, agent atypes.Agent, workDir string, skill *skill.Skill, userInput string, events chan<- atypes.Event, allowAll bool) error {
 	// if skill is empty, then treat as no skill
 	if skill != nil && skill.Content == "" {
 		skill = nil
@@ -40,7 +40,7 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 
 	alreadyCall := make(map[string]string)
 	for i := 0; i < MaxToolIterations; i++ {
-		resp, err := agent.Send(ctx, sessionData.messages, exec.Tools)
+		resp, err := agent.Send(ctx, sessionData.Messages, exec.Tools)
 		if err != nil {
 			return err
 		}
@@ -71,7 +71,7 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 
 			choice.Message.Content = fmt.Sprintf("當前時間：%s\n%s", time.Now().Format("2006-01-02T15:04:05 MST (UTC-07:00)"), cleaned)
 
-			sessionData.messages = append(sessionData.messages, choice.Message)
+			sessionData.Messages = append(sessionData.Messages, choice.Message)
 
 			err := writeHistory(choice, configDir, sessionData, sessionID)
 			if err != nil {
@@ -86,14 +86,14 @@ func Execute(ctx context.Context, agent Agent, workDir string, skill *skill.Skil
 
 		events <- atypes.Event{Type: atypes.EventDone}
 
-		if len(sessionData.tools) > 0 {
+		if len(sessionData.Tools) > 0 {
 			date := time.Now().Format("2006-01-02")
 			dateWithSec := time.Now().Format("2006-01-02-15-04-05")
 			toolActionsDir := filepath.Join(configDir.Work, sessionID, date)
 			if err := os.MkdirAll(toolActionsDir, 0755); err == nil {
 				filename := dateWithSec + ".json"
 				toolActionsPath := filepath.Join(toolActionsDir, filename)
-				if data, err := json.Marshal(sessionData.tools); err == nil {
+				if data, err := json.Marshal(sessionData.Tools); err == nil {
 					os.WriteFile(toolActionsPath, data, 0644)
 				}
 			}

@@ -6,14 +6,15 @@ import (
 	"os"
 	"path/filepath"
 
+	atypes "github.com/pardnchiu/go-agent-skills/internal/agents/types"
 	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
 
-func writeHistory(choice OpenAIOutputChoices, configDir *utils.ConfigDirData, input *SessionData, sessionID string) error {
-	input.histories = append(input.histories, choice.Message)
+func writeHistory(choice atypes.OutputChoices, configDir *utils.ConfigDirData, input *atypes.AgentSession, sessionID string) error {
+	input.Histories = append(input.Histories, choice.Message)
 
-	filtered := make([]Message, 0, len(input.histories))
-	for _, m := range input.histories {
+	filtered := make([]atypes.Message, 0, len(input.Histories))
+	for _, m := range input.Histories {
 		if m.Role == "system" {
 			continue
 		}

@@ -1,0 +1,30 @@
+package types
+
+import (
+	"context"
+
+	"github.com/pardnchiu/go-agent-skills/internal/skill"
+	ttypes "github.com/pardnchiu/go-agent-skills/internal/tools/types"
+)
+
+type Agent interface {
+	Send(ctx context.Context, messages []Message, toolDefs []ttypes.Tool) (*Output, error)
+	Execute(ctx context.Context, skill *skill.Skill, userInput string, events chan<- Event, allowAll bool) error
+}
+
+type AgentRegistry struct {
+	Registry map[string]Agent
+	Entries  []AgentEntry
+	Fallback Agent
+}
+
+type AgentEntry struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+type AgentSession struct {
+	Tools     []Message
+	Messages  []Message
+	Histories []Message
+}

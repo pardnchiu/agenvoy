@@ -19,8 +19,8 @@ func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput strin
 	return exec.Execute(ctx, a, a.workDir, skill, userInput, events, allowAll)
 }
 
-func (a *Agent) Send(ctx context.Context, messages []exec.Message, tools []ttypes.Tool) (*exec.OpenAIOutput, error) {
-	result, _, err := utils.POST[exec.OpenAIOutput](ctx, a.httpClient, chatAPI, map[string]string{
+func (a *Agent) Send(ctx context.Context, messages []atypes.Message, tools []ttypes.Tool) (*atypes.Output, error) {
+	result, _, err := utils.POST[atypes.Output](ctx, a.httpClient, chatAPI, map[string]string{
 		"Authorization": "Bearer " + a.apiKey,
 		"Content-Type":  "application/json",
 	}, map[string]any{
