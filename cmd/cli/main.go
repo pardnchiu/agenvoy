@@ -14,6 +14,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/exec"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/claude"
+	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/compat"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/copilot"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/gemini"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/nvidia"
@@ -201,6 +202,7 @@ func getAgentRegistry() atypes.AgentRegistry {
 	newFn := map[string]func(string) (atypes.Agent, error){
 		"copilot": func(m string) (atypes.Agent, error) { return copilot.New(m) },
 		"openai":  func(m string) (atypes.Agent, error) { return openai.New(m) },
+		"compat":  func(m string) (atypes.Agent, error) { return compat.New(m) },
 		"claude":  func(m string) (atypes.Agent, error) { return claude.New(m) },
 		"gemini":  func(m string) (atypes.Agent, error) { return gemini.New(m) },
 		"nvidia":  func(m string) (atypes.Agent, error) { return nvidia.New(m) },
