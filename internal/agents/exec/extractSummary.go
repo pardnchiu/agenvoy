@@ -42,6 +42,9 @@ func extractSummary(configDir *utils.ConfigDirData, sessionID, value string) str
 		json.Unmarshal([]byte(jsonPart), &jsonData)
 		cleaned = strings.TrimRight(value[:start], " \t\n\r")
 	} else {
+		if start != -1 {
+			cleaned = strings.TrimRight(value[:start], " \t\n\r")
+		}
 		// Fallback: strip any trailing markdown JSON block that looks like a summary
 		if loc := trailingJSONBlock.FindStringSubmatchIndex(value); loc != nil {
 			jsonPart := value[loc[2]:loc[3]]
