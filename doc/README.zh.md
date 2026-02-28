@@ -1,5 +1,6 @@
 > [!NOTE]
-> 此 README 由 [SKILL](https://github.com/pardnchiu/skill-readme-generate) 生成，英文版請參閱 [這裡](../README.md)。
+> 此 README 由 [SKILL](https://github.com/pardnchiu/skill-readme-generate) 生成，英文版請參閱 [這裡](../README.md)。<br>
+> 測試由 [SKILL](https://github.com/pardnchiu/skill-coverage-generate) 生成。
 
 ![cover](./cover.png)
 
@@ -9,6 +10,7 @@
 [![card](https://goreportcard.com/badge/github.com/pardnchiu/agenvoy)](https://goreportcard.com/report/github.com/pardnchiu/agenvoy)
 [![license](https://img.shields.io/github/license/pardnchiu/agenvoy)](LICENSE)
 [![version](https://img.shields.io/github/v/tag/pardnchiu/agenvoy?label=release)](https://github.com/pardnchiu/agenvoy/releases)
+[![codecov](https://codecov.io/gh/pardnchiu/agenvoy/branch/master/graph/badge.svg)](https://codecov.io/gh/pardnchiu/agenvoy)
 
 > 內建 Skill 與 Agent 智能路由、跨輪次概要記憶，支援零程式碼掛載任意 REST API 工具
 
