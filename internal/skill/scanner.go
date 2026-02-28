@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -145,7 +146,7 @@ func (s *Scanner) scan(root string, skillChan chan<- *Skill) error {
 func (s *Scanner) List() []string {
 	names := make([]string, 0, len(s.Skills.ByName))
 	for name := range s.Skills.ByName {
-		names = append(names, name)
+		names = append(names, strings.TrimSpace(name))
 	}
 	return names
 }

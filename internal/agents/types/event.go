@@ -4,7 +4,14 @@ type EventType int
 
 const (
 	EventText EventType = iota
+	EventAgentSelect
+	EventAgentResult
+	EventSkillSelect
+	EventSkillResult
 	EventToolCall
+	EventToolCallStart
+	EventToolCallText
+	EventToolCallEnd
 	EventToolResult
 	EventToolSkipped
 	EventToolConfirm

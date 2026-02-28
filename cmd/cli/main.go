@@ -1,25 +1,15 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"slices"
 	"sort"
-	"strings"
-	"time"
 
-	"github.com/manifoldco/promptui"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/exec"
-	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/claude"
-	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/compat"
-	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/copilot"
-	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/gemini"
 	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/nvidia"
-	"github.com/pardnchiu/go-agent-skills/internal/agents/provider/openai"
 	agentTypes "github.com/pardnchiu/go-agent-skills/internal/agents/types"
 	"github.com/pardnchiu/go-agent-skills/internal/skill"
 
@@ -89,7 +79,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err := runWithEvents(ctx, cancel, func(ch chan<- agentTypes.Event) error {
+		if err := runEvents(ctx, cancel, func(ch chan<- agentTypes.Event) error {
 			return exec.Run(ctx, selectorBot, agentRegistry, scanner, userInput, ch, allowAll)
 		}); err != nil && ctx.Err() == nil {
 			slog.Error("failed to execute", slog.String("error", err.Error()))
@@ -97,153 +87,4 @@ func main() {
 		}
 		return
 	}
-
-}
-
-func printTool(ev agentTypes.Event) {
-	var args map[string]any
-	json.Unmarshal([]byte(ev.ToolArgs), &args)
-
-	switch ev.ToolName {
-	// case "read_file":
-	// 	fmt.Printf("[*] Read File — \033[36m%s\033[0m\n", args["path"])
-	// case "list_files":
-	// 	fmt.Printf("[*] List Directory — \033[36m%s\033[0m\n", args["path"])
-	// case "glob_files":
-	// 	fmt.Printf("[*] Glob Files — \033[35m%s\033[0m\n", args["pattern"])
-	// case "write_file":
-	// 	fmt.Printf("[*] Write File — \033[33m%s\033[0m\n", args["path"])
-	// case "search_content":
-	// 	fmt.Printf("[*] Search Content — \033[35m%s\033[0m\n", args["pattern"])
-	// case "patch_edit":
-	// 	fmt.Printf("[*] Patch Edit — \033[33m%s\033[0m\n", args["path"])
-	// case "run_command":
-	// 	fmt.Printf("[*] Run Command — \033[32m%s\033[0m\n", args["command"])
-	// case "fetch_yahoo_finance":
-	// 	fmt.Printf("[*] Fetch Ticker — \033[34m%s (%s)\033[0m\n", args["symbol"], args["range"])
-	// case "fetch_google_rss":
-	// 	fmt.Printf("[*] Fetch News — \033[34m%s (%s)\033[0m\n", args["keyword"], args["time"])
-	// case "fetch_page":
-	// 	url := fmt.Sprintf("%v", args["url"])
-	// 	if len(url) > 64 {
-	// 		url = url[:61] + "..."
-	// 	}
-	// 	fmt.Printf("[*] Fetch Page — \033[34m%s\033[0m\n", url)
-	default:
-		var buf bytes.Buffer
-		enc := json.NewEncoder(&buf)
-		enc.SetEscapeHTML(false)
-		enc.Encode(args)
-		fmt.Printf("[*] Tool: %s — \033[90m%s\033[0m\n", ev.ToolName, strings.TrimSpace(buf.String()))
-	}
-}
-
-func printContent(ev agentTypes.Event) {
-	fmt.Print("\033[90m──────────────────────────────────────────────────\n")
-	fmt.Printf("%s\n", strings.TrimSpace(ev.Result))
-	fmt.Print("──────────────────────────────────────────────────\033[0m\n")
-}
-
-func runWithEvents(_ context.Context, cancel context.CancelFunc, fn func(chan<- agentTypes.Event) error) error {
-	start := time.Now()
-	ch := make(chan agentTypes.Event, 16)
-	var execErr error
-
-	go func() {
-		defer close(ch)
-		execErr = fn(ch)
-	}()
-
-	for ev := range ch {
-		switch ev.Type {
-		case agentTypes.EventText:
-			fmt.Printf("[*] %s\n", ev.Text)
-
-		case agentTypes.EventToolCall:
-			printTool(ev)
-
-		case agentTypes.EventToolConfirm:
-			prompt := promptui.Select{
-				Label:        fmt.Sprintf("Run %s?", ev.ToolName),
-				Items:        []string{"Yes", "Skip", "Stop"},
-				Size:         3,
-				HideSelected: true,
-			}
-			idx, _, err := prompt.Run()
-			if err != nil || idx == 2 {
-				fmt.Printf("[x] User stopped\n")
-				cancel()
-				ev.ReplyCh <- false
-			} else if idx == 1 {
-				fmt.Printf("[x] User skipped: %s\n", ev.ToolName)
-				ev.ReplyCh <- false
-			} else {
-				ev.ReplyCh <- true
-			}
-
-		case agentTypes.EventToolSkipped:
-			fmt.Printf("[x] Skipped: %s\n", ev.ToolName)
-
-		case agentTypes.EventToolResult:
-			if ev.ToolName == "write_file" {
-				printContent(ev)
-			}
-
-		case agentTypes.EventError:
-			if ev.Err != nil {
-				fmt.Fprintf(os.Stderr, "[!] Error: %v\n", ev.Err)
-			}
-
-		case agentTypes.EventDone:
-			fmt.Printf(" (%s)", time.Since(start).Round(time.Millisecond))
-			fmt.Println()
-		}
-	}
-
-	return execErr
-}
-
-func getAgentRegistry() agentTypes.AgentRegistry {
-	newFn := map[string]func(string) (agentTypes.Agent, error){
-		"copilot": func(m string) (agentTypes.Agent, error) { return copilot.New(m) },
-		"openai":  func(m string) (agentTypes.Agent, error) { return openai.New(m) },
-		"compat":  func(m string) (agentTypes.Agent, error) { return compat.New(m) },
-		"claude":  func(m string) (agentTypes.Agent, error) { return claude.New(m) },
-		"gemini":  func(m string) (agentTypes.Agent, error) { return gemini.New(m) },
-		"nvidia":  func(m string) (agentTypes.Agent, error) { return nvidia.New(m) },
-	}
-
-	agentEntries := exec.GetAgentEntries()
-	// var fallback exec.Agent
-	// registry := make(map[string]exec.Agent, len(agentEntries))
-	// entries := make([]exec.AgentEntryData, 0, len(agentEntries))
-
-	agentRegistry := agentTypes.AgentRegistry{
-		Registry: make(map[string]agentTypes.Agent, len(agentEntries)),
-		Entries:  make([]agentTypes.AgentEntry, 0, len(agentEntries)),
-	}
-	for _, e := range agentEntries {
-		provider := strings.SplitN(e.Name, "@", 2)[0]
-		fn, ok := newFn[provider]
-		if !ok {
-			continue
-		}
-		a, err := fn(e.Name)
-		if err != nil {
-			slog.Warn("failed to initialize agent", slog.String("name", e.Name), slog.String("error", err.Error()))
-			continue
-		}
-		agentRegistry.Registry[e.Name] = a
-		agentRegistry.Entries = append(agentRegistry.Entries, e)
-		if agentRegistry.Fallback == nil {
-			agentRegistry.Fallback = a
-		}
-	}
-
-	if agentRegistry.Fallback == nil {
-		slog.Error("no agent available; check API keys")
-		os.Exit(1)
-	}
-
-	return agentRegistry
 }

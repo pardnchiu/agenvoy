@@ -2,6 +2,7 @@ package exec
 
 import (
 	"crypto/rand"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -15,124 +16,155 @@ import (
 	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
 
+//go:embed prompt/summaryPrompt.md
+var summaryPrompt string
+
 type IndexData struct {
 	SessionID string `json:"session_id"`
 }
 
-func getSession(prompt string, userInput string) (*agentTypes.AgentSession, string, error) {
+func getSession(prompt string, userInput string) (*agentTypes.AgentSession, error) {
+	trimInput := strings.TrimSpace(userInput)
+
 	now := fmt.Sprintf("%d", time.Now().Unix())
-	input := agentTypes.AgentSession{
+	session := agentTypes.AgentSession{
 		Tools: []agentTypes.Message{},
 		Messages: []agentTypes.Message{
-			{Role: "system", Content: prompt},
+			{
+				Role:    "system",
+				Content: prompt,
+			},
 		},
 		Histories: []agentTypes.Message{},
 	}
 
 	configDir, err := utils.GetConfigDir("sessions")
 	if err != nil {
-		return nil, "", fmt.Errorf("utils.ConfigDir: %v\n", err)
+		return nil, fmt.Errorf("utils.ConfigDir: %v\n", err)
 	}
 
-	indexJSONPath := filepath.Join(configDir.Home, "..", "config.json")
-
-	unlock, err := lockConfig(filepath.Dir(indexJSONPath))
+	indexJsonPath := filepath.Join(configDir.Home, "..", "config.json")
+	unlock, err := lockConfig(filepath.Dir(indexJsonPath))
 	if err != nil {
-		return nil, "", fmt.Errorf("lockConfig: %w", err)
+		return nil, fmt.Errorf("lockConfig: %w", err)
 	}
 	defer unlock()
 
 	var sessionID string
-	data, readErr := os.ReadFile(indexJSONPath)
+	data, configErr := os.ReadFile(indexJsonPath)
 	switch {
-	case readErr == nil:
+	case configErr == nil:
+		// * config is exist
 		var indexData IndexData
 		if err := json.Unmarshal(data, &indexData); err != nil {
-			return nil, "", fmt.Errorf("config.json corrupted: %w", err)
+			return nil, fmt.Errorf("json.Unmarshal: %w", err)
 		}
 		if indexData.SessionID == "" {
-			return nil, "", fmt.Errorf("config.json corrupted: session_id is empty")
+			return nil, fmt.Errorf("session_id is empty")
 		}
-		sessionID = indexData.SessionID
+		sessionID = strings.TrimSpace(indexData.SessionID)
 
 		var summary string
 		if summaryData, err := os.ReadFile(filepath.Join(configDir.Home, sessionID, "summary.json")); err == nil {
 			summary = strings.NewReplacer(
 				"{{.Summary}}", string(summaryData),
-			).Replace(summaryPrompt)
+			).Replace(strings.TrimSpace(summaryPrompt))
 		}
 
-		if histData, err := os.ReadFile(filepath.Join(configDir.Home, sessionID, "history.json")); err == nil {
+		if historyData, err := os.ReadFile(filepath.Join(configDir.Home, sessionID, "history.json")); err == nil {
+			// * for ensuring context relevance
 			var oldHistory []agentTypes.Message
-			if err := json.Unmarshal(histData, &oldHistory); err == nil {
-				input.Histories = oldHistory
+			if err := json.Unmarshal(historyData, &oldHistory); err == nil {
+				session.Histories = oldHistory
 			}
-			input.Histories = append(input.Histories, agentTypes.Message{Role: "user", Content: fmt.Sprintf("ts:%s\n%s", now, userInput)})
+			if len(oldHistory) > 4 {
+				oldHistory = oldHistory[len(oldHistory)-4:]
+			}
+			session.Messages = append(session.Messages, oldHistory...)
 
+			// * insert summary prompt every time
 			if summary != "" {
-				input.Messages = append(input.Messages, agentTypes.Message{Role: "system", Content: summary})
+				session.Messages = append(session.Messages, agentTypes.Message{
+					Role:    "system",
+					Content: summary,
+				})
 			}
-			recentHistory := oldHistory
-			if len(recentHistory) > 4 {
-				recentHistory = recentHistory[len(recentHistory)-4:]
-			}
-			input.Messages = append(input.Messages, recentHistory...)
-			input.Messages = append(input.Messages, agentTypes.Message{Role: "user", Content: fmt.Sprintf("ts:%s\n%s", now, userInput)})
+
+			session.Histories = append(session.Histories, agentTypes.Message{
+				Role:    "user",
+				Content: fmt.Sprintf("ts:%s\n%s", now, trimInput),
+			})
+			session.Messages = append(session.Messages, agentTypes.Message{
+				Role:    "user",
+				Content: fmt.Sprintf("ts:%s\n%s", now, trimInput),
+			})
 		}
 
-	case os.IsNotExist(readErr):
-		var genErr error
-		sessionID, genErr = newSessionID()
-		if genErr != nil {
-			return nil, "", fmt.Errorf("newSessionID: %w", genErr)
+	case os.IsNotExist(configErr):
+		// * config is not exist
+		sessionID, err := newSessionID()
+		if err != nil {
+			return nil, fmt.Errorf("newSessionID: %w", err)
 		}
 
-		input.Histories = append(input.Histories, agentTypes.Message{Role: "user", Content: fmt.Sprintf("ts:%s\n%s", now, userInput)})
-		input.Messages = append(input.Messages, agentTypes.Message{Role: "user", Content: fmt.Sprintf("ts:%s\n%s", now, userInput)})
+		session.Histories = append(session.Histories, agentTypes.Message{
+			Role:    "user",
+			Content: fmt.Sprintf("ts:%s\n%s", now, trimInput),
+		})
+		session.Messages = append(session.Messages, agentTypes.Message{
+			Role:    "user",
+			Content: fmt.Sprintf("ts:%s\n%s", now, trimInput),
+		})
 
 		indexDataBytes, err := json.Marshal(IndexData{SessionID: sessionID})
 		if err != nil {
-			return nil, "", fmt.Errorf("json.Marshal: %w", err)
+			return nil, fmt.Errorf("json.Marshal: %w", err)
 		}
-		// O_EXCL: flock 외 추가 방어층 — 파일이 생성된 경우 원자적 실패
-		f, err := os.OpenFile(indexJSONPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+
+		file, err := os.OpenFile(indexJsonPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 		if err != nil {
-			return nil, "", fmt.Errorf("os.OpenFile config.json: %w", err)
+			return nil, fmt.Errorf("os.OpenFile: %w", err)
 		}
-		_, writeErr := f.Write(indexDataBytes)
-		closeErr := f.Close()
-		if writeErr != nil {
-			return nil, "", fmt.Errorf("write config.json: %w", writeErr)
+
+		_, err = file.Write(indexDataBytes)
+		if err != nil {
+			return nil, fmt.Errorf("file.Write: %w", err)
 		}
-		if closeErr != nil {
-			return nil, "", fmt.Errorf("close config.json: %w", closeErr)
+
+		err = file.Close()
+		if err != nil {
+			return nil, fmt.Errorf("file.Close: %w", err)
 		}
 
 	default:
-		return nil, "", fmt.Errorf("os.ReadFile config.json: %w", readErr)
+		return nil, fmt.Errorf("os.ReadFile: %w", configErr)
 	}
 
 	err = os.MkdirAll(filepath.Join(configDir.Home, sessionID), 0755)
 	if err != nil {
-		return nil, "", fmt.Errorf("os.MkdirAll: %w", err)
+		return nil, fmt.Errorf("os.MkdirAll: %w", err)
 	}
 
-	return &input, sessionID, nil
+	session.ID = sessionID
+
+	return &session, nil
 }
 
 func lockConfig(dir string) (func(), error) {
 	lockPath := filepath.Join(dir, "config.json.lock")
-	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_WRONLY, 0600)
+	file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("os.OpenFile: %w", err)
 	}
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
-		f.Close()
+
+	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil {
+		file.Close()
 		return nil, fmt.Errorf("syscall.Flock: %w", err)
 	}
+
 	return func() {
-		_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
-		f.Close()
+		_ = syscall.Flock(int(file.Fd()), syscall.LOCK_UN)
+		file.Close()
 	}, nil
 }
 

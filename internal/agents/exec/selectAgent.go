@@ -49,13 +49,15 @@ func GetAgentEntries() []agentTypes.AgentEntry {
 }
 
 func selectAgent(ctx context.Context, bot agentTypes.Agent, agentEntries []agentTypes.AgentEntry, userInput string) string {
+	trimInput := strings.TrimSpace(userInput)
+
 	if len(agentEntries) == 0 {
 		return ""
 	}
 
-	newMap := make(map[string]struct{}, len(agentEntries))
+	agentMap := make(map[string]struct{}, len(agentEntries))
 	for _, a := range agentEntries {
-		newMap[a.Name] = struct{}{}
+		agentMap[a.Name] = struct{}{}
 	}
 
 	agentJson, err := json.Marshal(agentEntries)
@@ -64,10 +66,17 @@ func selectAgent(ctx context.Context, bot agentTypes.Agent, agentEntries []agent
 	}
 
 	messages := []agentTypes.Message{
-		{Role: "system", Content: agentSelectorPrompt},
 		{
-			Role:    "user",
-			Content: fmt.Sprintf("Available agents:\n%s\nUser request: %s", agentJson, userInput),
+			Role:    "system",
+			Content: strings.TrimSpace(agentSelectorPrompt),
+		},
+		{
+			Role: "user",
+			Content: fmt.Sprintf(
+				"Available agents:\n%s\nUser request: %s",
+				string(agentJson),
+				strings.TrimSpace(trimInput),
+			),
 		},
 	}
 
@@ -85,7 +94,7 @@ func selectAgent(ctx context.Context, bot agentTypes.Agent, agentEntries []agent
 		return ""
 	}
 
-	if _, ok := newMap[answer]; ok {
+	if _, ok := agentMap[answer]; ok {
 		return answer
 	}
 

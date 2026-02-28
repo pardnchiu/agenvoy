@@ -24,6 +24,7 @@ type AgentEntry struct {
 }
 
 type AgentSession struct {
+	ID        string
 	Tools     []Message
 	Messages  []Message
 	Histories []Message

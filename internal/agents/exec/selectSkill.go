@@ -3,6 +3,7 @@ package exec
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -14,22 +15,35 @@ import (
 var skillSelectorPrompt string
 
 func selectSkill(ctx context.Context, bot agentTypes.Agent, scanner *skill.Scanner, userInput string) *skill.Skill {
+	trimInput := strings.TrimSpace(userInput)
+
 	skills := scanner.List()
 	if len(skills) == 0 {
 		return nil
 	}
 
-	var sb strings.Builder
-	for _, skill := range skills {
-		s := scanner.Skills.ByName[skill]
-		sb.WriteString(fmt.Sprintf("- %s: %s\n", skill, s.Description))
+	skillMap := make(map[string]string, len(skills))
+	for _, name := range skills {
+		// * already checked List() will output trimmed skill name
+		skillMap[name] = strings.TrimSpace(scanner.Skills.ByName[name].Description)
+	}
+	skillJson, err := json.Marshal(skillMap)
+	if err != nil {
+		return nil
 	}
 
 	messages := []agentTypes.Message{
-		{Role: "system", Content: skillSelectorPrompt},
 		{
-			Role:    "user",
-			Content: fmt.Sprintf("Available skills:\n%s\nUser request: %s", sb.String(), userInput),
+			Role:    "system",
+			Content: strings.TrimSpace(skillSelectorPrompt),
+		},
+		{
+			Role: "user",
+			Content: fmt.Sprintf(
+				"Available skills: %s\nUser request: %s",
+				string(skillJson),
+				strings.TrimSpace(trimInput),
+			),
 		},
 	}
 

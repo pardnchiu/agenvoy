@@ -15,28 +15,28 @@ func toolCall(ctx context.Context, exec *toolTypes.Executor, choice agentTypes.O
 	sessionData.Messages = append(sessionData.Messages, choice.Message)
 
 	for _, tool := range choice.Message.ToolCalls {
-		toolName := tool.Function.Name
-		toolArg := tool.Function.Arguments
+		toolID := strings.TrimSpace(tool.ID)
+		toolArg := strings.TrimSpace(tool.Function.Arguments)
+		toolName := strings.TrimSpace(tool.Function.Name)
+		if idx := strings.Index(toolName, "<|"); idx != -1 {
+			toolName = toolName[:idx]
+		}
 
 		hash := fmt.Sprintf("%v|%v", toolName, toolArg)
 		if cached, ok := alreadyCall[hash]; ok && cached != "" {
 			sessionData.Messages = append(sessionData.Messages, agentTypes.Message{
 				Role:       "tool",
-				Content:    cached,
-				ToolCallID: tool.ID,
+				Content:    strings.TrimSpace(cached),
+				ToolCallID: toolID,
 			})
 			continue
-		}
-
-		if idx := strings.Index(toolName, "<|"); idx != -1 {
-			toolName = toolName[:idx]
 		}
 
 		events <- agentTypes.Event{
 			Type:     agentTypes.EventToolCall,
 			ToolName: toolName,
-			ToolArgs: tool.Function.Arguments,
-			ToolID:   tool.ID,
+			ToolArgs: toolArg,
+			ToolID:   toolID,
 		}
 
 		if !allowAll {
@@ -44,8 +44,8 @@ func toolCall(ctx context.Context, exec *toolTypes.Executor, choice agentTypes.O
 			events <- agentTypes.Event{
 				Type:     agentTypes.EventToolConfirm,
 				ToolName: toolName,
-				ToolArgs: tool.Function.Arguments,
-				ToolID:   tool.ID,
+				ToolArgs: toolArg,
+				ToolID:   toolID,
 				ReplyCh:  replyCh,
 			}
 			proceed := <-replyCh
@@ -53,20 +53,26 @@ func toolCall(ctx context.Context, exec *toolTypes.Executor, choice agentTypes.O
 				events <- agentTypes.Event{
 					Type:     agentTypes.EventToolSkipped,
 					ToolName: toolName,
-					ToolID:   tool.ID,
+					ToolID:   toolID,
 				}
 				sessionData.Tools = append(sessionData.Tools, agentTypes.Message{
 					Role:       "tool",
 					Content:    "Skipped by user",
-					ToolCallID: tool.ID,
+					ToolCallID: toolID,
 				})
 				sessionData.Messages = append(sessionData.Messages, agentTypes.Message{
 					Role:       "tool",
 					Content:    "Skipped by user",
-					ToolCallID: tool.ID,
+					ToolCallID: toolID,
 				})
 				continue
 			}
+		}
+
+		events <- agentTypes.Event{
+			Type:     agentTypes.EventToolCallStart,
+			ToolName: toolName,
+			ToolID:   toolID,
 		}
 
 		result, err := tools.Execute(ctx, exec, toolName, json.RawMessage(tool.Function.Arguments))
@@ -74,24 +80,39 @@ func toolCall(ctx context.Context, exec *toolTypes.Executor, choice agentTypes.O
 			result = "no data"
 		}
 
-		content := fmt.Sprintf("[%s] %s", toolName, result)
+		if result != "" {
+			events <- agentTypes.Event{
+				Type:     agentTypes.EventToolCallText,
+				ToolName: toolName,
+				ToolID:   toolID,
+				Text:     result,
+			}
+		}
+
+		events <- agentTypes.Event{
+			Type:     agentTypes.EventToolCallEnd,
+			ToolName: toolName,
+			ToolID:   toolID,
+		}
+
+		content := strings.TrimSpace(fmt.Sprintf("[%s] %s", toolName, result))
 		alreadyCall[hash] = content
 
 		events <- agentTypes.Event{
 			Type:     agentTypes.EventToolResult,
 			ToolName: toolName,
-			ToolID:   tool.ID,
+			ToolID:   toolID,
 			Result:   result,
 		}
 		sessionData.Tools = append(sessionData.Tools, agentTypes.Message{
 			Role:       "tool",
 			Content:    content,
-			ToolCallID: tool.ID,
+			ToolCallID: toolID,
 		})
 		sessionData.Messages = append(sessionData.Messages, agentTypes.Message{
 			Role:       "tool",
 			Content:    content,
-			ToolCallID: tool.ID,
+			ToolCallID: toolID,
 		})
 	}
 	return sessionData, alreadyCall, nil

@@ -10,11 +10,11 @@ import (
 	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
 
-func writeHistory(choice agentTypes.OutputChoices, configDir *utils.ConfigDirData, input *agentTypes.AgentSession, sessionID string) error {
-	input.Histories = append(input.Histories, choice.Message)
+func writeHistory(choice agentTypes.OutputChoices, configDir *utils.ConfigDirData, session *agentTypes.AgentSession) error {
+	session.Histories = append(session.Histories, choice.Message)
 
-	filtered := make([]agentTypes.Message, 0, len(input.Histories))
-	for _, m := range input.Histories {
+	filtered := make([]agentTypes.Message, 0, len(session.Histories))
+	for _, m := range session.Histories {
 		if m.Role == "system" {
 			continue
 		}
@@ -27,7 +27,7 @@ func writeHistory(choice agentTypes.OutputChoices, configDir *utils.ConfigDirDat
 		filtered = append(filtered, m)
 	}
 
-	historyPath := filepath.Join(configDir.Home, sessionID, "history.json")
+	historyPath := filepath.Join(configDir.Home, session.ID, "history.json")
 	historyData, err := json.Marshal(filtered)
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %w", err)

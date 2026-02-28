@@ -148,8 +148,8 @@ func GetConfigDir(path ...string) (*ConfigDirData, error) {
 		return nil, fmt.Errorf("os.Getwd: %w", err)
 	}
 
-	homeDir = filepath.Join(append([]string{homeDir, ".config", projectName}, path...)...)
-	workDir = filepath.Join(append([]string{workDir, ".config", projectName}, path...)...)
+	homeDir = strings.TrimSpace(filepath.Join(append([]string{homeDir, ".config", projectName}, path...)...))
+	workDir = strings.TrimSpace(filepath.Join(append([]string{workDir, ".config", projectName}, path...)...))
 
 	config := &ConfigDirData{
 		Home: homeDir,

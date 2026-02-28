@@ -2,6 +2,7 @@ package exec
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -16,6 +17,17 @@ import (
 	"github.com/pardnchiu/go-agent-skills/internal/utils"
 )
 
+//go:embed prompt/systemPrompt.md
+var systemPrompt string
+
+//go:embed prompt/skillExtension.md
+var skillExtensionPrompt string
+
+const (
+	MaxToolIterations  = 16
+	MaxSkillIterations = 128
+)
+
 func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill *skill.Skill, userInput string, events chan<- agentTypes.Event, allowAll bool) error {
 	// if skill is empty, then treat as no skill
 	if skill != nil && skill.Content == "" {
@@ -28,12 +40,12 @@ func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill 
 	}
 
 	prompt := getSystemPrompt(workDir, skill)
-	sessionData, sessionID, err := getSession(prompt, userInput)
+	session, err := getSession(prompt, userInput)
 	if err != nil {
 		return fmt.Errorf("getSession: %w", err)
 	}
 
-	exec, err := tools.NewExecutor(workDir, sessionID)
+	exec, err := tools.NewExecutor(workDir, session.ID)
 	if err != nil {
 		return fmt.Errorf("tools.NewExecutor: %w", err)
 	}
@@ -47,7 +59,7 @@ func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill 
 	emptyCount := 0
 	const maxEmpty = 3
 	for i := 0; i < limit; i++ {
-		resp, err := agent.Send(ctx, sessionData.Messages, exec.Tools)
+		resp, err := agent.Send(ctx, session.Messages, exec.Tools)
 		if err != nil {
 			return err
 		}
@@ -65,7 +77,7 @@ func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill 
 
 		choice := resp.Choices[0]
 		if len(choice.Message.ToolCalls) > 0 {
-			sessionData, alreadyCall, err = toolCall(ctx, exec, choice, sessionData, events, allowAll, alreadyCall)
+			session, alreadyCall, err = toolCall(ctx, exec, choice, session, events, allowAll, alreadyCall)
 			if err != nil {
 				return err
 			}
@@ -78,15 +90,15 @@ func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill 
 			if text == "" {
 				text = "工具無法取得資料，請稍後再試或改用其他方式查詢。"
 			}
-			cleaned := extractSummary(configDir, sessionID, text)
+			cleaned := extractSummary(configDir, session.ID, text)
 
 			events <- agentTypes.Event{Type: agentTypes.EventText, Text: cleaned}
 
 			choice.Message.Content = fmt.Sprintf("ts:%d\n%s", time.Now().Unix(), cleaned)
 
-			sessionData.Messages = append(sessionData.Messages, choice.Message)
+			session.Messages = append(session.Messages, choice.Message)
 
-			err := writeHistory(choice, configDir, sessionData, sessionID)
+			err := writeHistory(choice, configDir, session)
 			if err != nil {
 				slog.Warn("Failed to write history",
 					slog.String("error", err.Error()))
@@ -99,15 +111,15 @@ func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill 
 
 		events <- agentTypes.Event{Type: agentTypes.EventDone}
 
-		if len(sessionData.Tools) > 0 {
+		if len(session.Tools) > 0 {
 			now := time.Now()
 			date := now.Format("2006-01-02")
 			dateWithSec := now.Format("2006-01-02-15-04-05")
-			toolActionsDir := filepath.Join(configDir.Work, sessionID, date)
+			toolActionsDir := filepath.Join(configDir.Work, session.ID, date)
 			if err := os.MkdirAll(toolActionsDir, 0755); err == nil {
 				filename := dateWithSec + ".json"
 				toolActionsPath := filepath.Join(toolActionsDir, filename)
-				if data, err := json.Marshal(sessionData.Tools); err == nil {
+				if data, err := json.Marshal(session.Tools); err == nil {
 					os.WriteFile(toolActionsPath, data, 0644)
 				}
 			}
@@ -115,14 +127,14 @@ func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill 
 		return nil
 	}
 
-	summaryMessages := append(sessionData.Messages, agentTypes.Message{
+	summaryMessages := append(session.Messages, agentTypes.Message{
 		Role:    "user",
 		Content: "請根據以上工具查詢結果，整理並總結回答原始問題。",
 	})
 	resp, err := agent.Send(ctx, summaryMessages, nil)
 	if err == nil && len(resp.Choices) > 0 {
 		if text, ok := resp.Choices[0].Message.Content.(string); ok && text != "" {
-			cleaned := extractSummary(configDir, sessionID, text)
+			cleaned := extractSummary(configDir, session.ID, text)
 			events <- agentTypes.Event{Type: agentTypes.EventText, Text: cleaned}
 			events <- agentTypes.Event{Type: agentTypes.EventDone}
 			return nil

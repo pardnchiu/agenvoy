@@ -11,16 +11,16 @@ import (
 )
 
 var (
-	// matches trailing markdown JSON blocks: optional separator + optional label + ```json ... ```
-	trailingJSONBlock = regexp.MustCompile(`(?s)\n*(?:---\s*\n)?(?:\*{0,2}[^\n*]*[Ss]ummary[^\n*]*\*{0,2}\s*\n)?` + "```" + `(?:json)?\s*(\{.*?\})\s*` + "```" + `\s*$`)
+	trailingJsonRegex = regexp.MustCompile(`(?s)\n*(?:---\s*\n)?(?:\*{0,2}[^\n*]*[Ss]ummary[^\n*]*\*{0,2}\s*\n)?` + "```" + `(?:json)?\s*(\{.*?\})\s*` + "```" + `\s*$`)
 )
 
-// isSummaryJSON checks if a parsed map contains summary-specific top-level keys.
 func isSummaryJSON(m map[string]any) bool {
-	summaryKeys := []string{"core_discussion", "discussion_log", "confirmed_needs", "current_conclusion"}
+	keys := []string{
+		"core_discussion", "discussion_log", "confirmed_needs", "current_conclusion",
+	}
 	matched := 0
-	for _, k := range summaryKeys {
-		if _, ok := m[k]; ok {
+	for _, key := range keys {
+		if _, exist := m[key]; exist {
 			matched++
 		}
 	}
@@ -46,7 +46,7 @@ func extractSummary(configDir *utils.ConfigDirData, sessionID, value string) str
 			cleaned = strings.TrimRight(value[:start], " \t\n\r")
 		}
 		// Fallback: strip any trailing markdown JSON block that looks like a summary
-		if loc := trailingJSONBlock.FindStringSubmatchIndex(value); loc != nil {
+		if loc := trailingJsonRegex.FindStringSubmatchIndex(value); loc != nil {
 			jsonPart := value[loc[2]:loc[3]]
 			var m map[string]any
 			if json.Unmarshal([]byte(jsonPart), &m) == nil && isSummaryJSON(m) {
