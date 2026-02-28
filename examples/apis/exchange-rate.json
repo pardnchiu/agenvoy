@@ -1,0 +1,20 @@
+{
+  "name": "exchange_rate",
+  "description": "查詢指定貨幣對所有貨幣的即時匯率",
+  "endpoint": {
+    "url": "https://open.er-api.com/v6/latest/{currency}",
+    "method": "GET",
+    "content_type": "json"
+  },
+  "parameters": {
+    "currency": {
+      "type": "string",
+      "description": "基準貨幣代碼（ISO 4217），例如 USD、TWD、JPY、EUR",
+      "required": true,
+      "enum": ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "KRW", "HKD", "SGD", "AUD"]
+    }
+  },
+  "response": {
+    "format": "json"
+  }
+}
