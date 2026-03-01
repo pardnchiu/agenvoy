@@ -101,7 +101,6 @@ func extract(raw, title, url string) (string, error) {
 	return strings.TrimSpace(collapse(sb.String())), nil
 }
 
-
 // * remove empty line like [\n]{2,} to be [\n]{2}
 func collapse(s string) string {
 	lines := strings.Split(s, "\n")
