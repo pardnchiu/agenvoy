@@ -4,3 +4,5 @@
 !examples/.config
 .doc
 *.out
+
+docker-compose.yml
