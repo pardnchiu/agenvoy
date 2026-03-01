@@ -119,7 +119,7 @@
             <h1>AGENVOY <span></span></h1>
             <p>
               STATUS: ALPHA<br />
-              RELEASE: <a href="">v0.7.2</a><br />
+              RELEASE: <a :href="releaseUrl">{{release}}</a><br />
               MAINTAINER: <a href="https://linkedin.com/in/pardnchiu" target="_blank">邱敬幃 PARDN CHIU</a><br />
               LAST_UPDATED: {{updatedAt}}
             </p>
@@ -182,6 +182,8 @@
         const app = new QUI({
           id: "app",
           data: {
+            release: "-",
+            releaseUrl: "-",
             description: "-",
             updatedAt: "-",
             releases: [],
@@ -210,6 +212,9 @@
                     href: e.html_url,
                   };
                 });
+
+                app.data.release = app.data.releases[0].tag;
+                app.data.releaseUrl = app.data.releases[0].href;
 
                 app.data.commits = json.commits.map((e) => {
                   return {

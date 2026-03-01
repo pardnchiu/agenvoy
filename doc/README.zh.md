@@ -1,5 +1,6 @@
 > [!NOTE]
-> 此 README 由 [SKILL](https://github.com/pardnchiu/skill-readme-generate) 生成，英文版請參閱 [這裡](../README.md)。
+> 此 README 由 [SKILL](https://github.com/pardnchiu/skill-readme-generate) 生成，英文版請參閱 [這裡](../README.md)。<br>
+> 測試由 [SKILL](https://github.com/pardnchiu/skill-coverage-generate) 生成。
 
 ![cover](./cover.png)
 
