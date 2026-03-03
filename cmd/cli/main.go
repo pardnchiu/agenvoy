@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/pardnchiu/agenvoy/internal/agents/exec"
 	"github.com/pardnchiu/agenvoy/internal/agents/provider/copilot"
 	agentTypes "github.com/pardnchiu/agenvoy/internal/agents/types"
+	"github.com/pardnchiu/agenvoy/internal/keychain"
 	"github.com/pardnchiu/agenvoy/internal/skill"
 )
 
@@ -18,8 +20,10 @@ func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("Usage:")
 		fmt.Println("  go run cmd/cli/main.go add")
+		fmt.Println("  go run cmd/cli/main.go remove")
 		fmt.Println("  go run cmd/cli/main.go list")
-		fmt.Println("  go run cmd/cli/main.go run <input...> [--allow]")
+		fmt.Println("  go run cmd/cli/main.go list skills")
+		fmt.Println("  go run cmd/cli/main.go run <input...>")
 		fmt.Println("  go run cmd/cli/main.go run-allow <input...>")
 		os.Exit(1)
 	}
@@ -29,29 +33,56 @@ func main() {
 		return
 	}
 
-	if os.Args[1] == "list" {
-		scanner := skill.NewScanner()
+	if os.Args[1] == "remove" {
+		runRemove()
+		return
+	}
 
-		if len(scanner.Skills.ByName) == 0 {
-			fmt.Println("No skills found")
-			fmt.Println("\nScanned paths:")
-			for _, path := range scanner.Skills.Paths {
-				fmt.Printf("  - %s\n", path)
+	if os.Args[1] == "list" {
+		if len(os.Args) > 2 && os.Args[2] == "skills" {
+			scanner := skill.NewScanner()
+
+			if len(scanner.Skills.ByName) == 0 {
+				fmt.Println("No skills found")
+				fmt.Println("\nScanned paths:")
+				for _, path := range scanner.Skills.Paths {
+					fmt.Printf("  - %s\n", path)
+				}
+				return
+			}
+
+			names := scanner.List()
+			sort.Strings(names)
+
+			fmt.Printf("Found %d skill(s):\n\n", len(names))
+			for _, name := range names {
+				s := scanner.Skills.ByName[name]
+				fmt.Printf("• %s\n", name)
+				if s.Description != "" {
+					fmt.Printf("  %s\n", s.Description)
+				}
+				fmt.Printf("  Path: %s\n\n", s.Path)
 			}
 			return
 		}
 
-		names := scanner.List()
-		sort.Strings(names)
+		cfg, err := keychain.Load()
+		if err != nil {
+			slog.Error("keychain.Load", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
 
-		fmt.Printf("Found %d skill(s):\n\n", len(names))
-		for _, name := range names {
-			s := scanner.Skills.ByName[name]
-			fmt.Printf("• %s\n", name)
-			if s.Description != "" {
-				fmt.Printf("  %s\n", s.Description)
+		if len(cfg.Models) == 0 {
+			fmt.Println("No models configured.")
+			return
+		}
+
+		fmt.Printf("Found %d model(s):\n\n", len(cfg.Models))
+		for _, m := range cfg.Models {
+			fmt.Printf("• %s\n", m.Name)
+			if m.Description != "" {
+				fmt.Printf("  %s\n", m.Description)
 			}
-			fmt.Printf("  Path: %s\n\n", s.Path)
 		}
 		return
 	}
