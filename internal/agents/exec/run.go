@@ -10,7 +10,7 @@ import (
 	"github.com/pardnchiu/agenvoy/internal/skill"
 )
 
-func Run(ctx context.Context, bot agentTypes.Agent, registry agentTypes.AgentRegistry, scanner *skill.Scanner, userInput string, events chan<- agentTypes.Event, allowAll bool) error {
+func Run(ctx context.Context, bot agentTypes.Agent, registry agentTypes.AgentRegistry, scanner *skill.Scanner, userInput string, imagePaths []string, events chan<- agentTypes.Event, allowAll bool) error {
 	workDir, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("os.Getwd: %w", err)
@@ -54,5 +54,11 @@ func Run(ctx context.Context, bot agentTypes.Agent, registry agentTypes.AgentReg
 		}
 	}
 
-	return Execute(ctx, agent, workDir, matchedSkill, trimInput, events, allowAll)
+	return Execute(ctx, ExecData{
+		Agent:   agent,
+		WorkDir: workDir,
+		Skill:   matchedSkill,
+		Input:   trimInput,
+		Images:  imagePaths,
+	}, events, allowAll)
 }

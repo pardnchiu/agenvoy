@@ -28,10 +28,19 @@ const (
 	MaxSkillIterations = 128
 )
 
-func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill *skill.Skill, userInput string, events chan<- agentTypes.Event, allowAll bool) error {
+type ExecData struct {
+	Agent   agentTypes.Agent
+	WorkDir string
+	Skill   *skill.Skill
+	Input   string
+	Images  []string
+}
+
+// func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill *skill.Skill, userInput string, imagePaths []string, events chan<- agentTypes.Event, allowAll bool) error {
+func Execute(ctx context.Context, data ExecData, events chan<- agentTypes.Event, allowAll bool) error {
 	// if skill is empty, then treat as no skill
-	if skill != nil && skill.Content == "" {
-		skill = nil
+	if data.Skill != nil && data.Skill.Content == "" {
+		data.Skill = nil
 	}
 
 	configDir, err := utils.GetConfigDir("sessions")
@@ -39,19 +48,19 @@ func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill 
 		return fmt.Errorf("utils.ConfigDir: %w", err)
 	}
 
-	prompt := getSystemPrompt(workDir, skill)
-	session, err := getSession(prompt, userInput)
+	prompt := getSystemPrompt(data)
+	session, err := getSession(prompt, data)
 	if err != nil {
 		return fmt.Errorf("getSession: %w", err)
 	}
 
-	exec, err := tools.NewExecutor(workDir, session.ID)
+	exec, err := tools.NewExecutor(data.WorkDir, session.ID)
 	if err != nil {
 		return fmt.Errorf("tools.NewExecutor: %w", err)
 	}
 
 	limit := MaxToolIterations
-	if skill != nil {
+	if data.Skill != nil {
 		limit = MaxSkillIterations
 	}
 
@@ -59,7 +68,7 @@ func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill 
 	emptyCount := 0
 	const maxEmpty = 8
 	for i := 0; i < limit; i++ {
-		resp, err := agent.Send(ctx, session.Messages, exec.Tools)
+		resp, err := data.Agent.Send(ctx, session.Messages, exec.Tools)
 		if err != nil {
 			return err
 		}
@@ -131,7 +140,7 @@ func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill 
 		Role:    "user",
 		Content: "請根據以上工具查詢結果，整理並總結回答原始問題。",
 	})
-	resp, err := agent.Send(ctx, summaryMessages, nil)
+	resp, err := data.Agent.Send(ctx, summaryMessages, nil)
 	if err == nil && len(resp.Choices) > 0 {
 		if text, ok := resp.Choices[0].Message.Content.(string); ok && text != "" {
 			cleaned := extractSummary(configDir, session.ID, text)
@@ -146,19 +155,20 @@ func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill 
 	return nil
 }
 
-func getSystemPrompt(workDir string, skill *skill.Skill) string {
-	if skill == nil {
+// func getSystemPrompt(workDir string, skill *skill.Skill) string {
+func getSystemPrompt(data ExecData) string {
+	if data.Skill == nil {
 		return strings.NewReplacer(
-			"{{.WorkPath}}", workDir,
+			"{{.WorkPath}}", data.WorkDir,
 			"{{.SkillPath}}", "None",
 			"{{.SkillExt}}", "",
 			"{{.Content}}", "",
 		).Replace(systemPrompt)
 	}
-	content := skill.Content
+	content := data.Skill.Content
 
 	for _, prefix := range []string{"scripts/", "templates/", "assets/"} {
-		resolved := filepath.Join(skill.Path, prefix)
+		resolved := filepath.Join(data.Skill.Path, prefix)
 
 		if _, err := os.Stat(resolved); err == nil {
 			content = strings.ReplaceAll(content, prefix, resolved+string(filepath.Separator))
@@ -166,8 +176,8 @@ func getSystemPrompt(workDir string, skill *skill.Skill) string {
 	}
 
 	return strings.NewReplacer(
-		"{{.WorkPath}}", workDir,
-		"{{.SkillPath}}", skill.Path,
+		"{{.WorkPath}}", data.WorkDir,
+		"{{.SkillPath}}", data.Skill.Path,
 		"{{.SkillExt}}", skillExtensionPrompt,
 		"{{.Content}}", content,
 	).Replace(systemPrompt)

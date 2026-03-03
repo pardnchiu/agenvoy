@@ -58,14 +58,20 @@ func main() {
 
 	if os.Args[1] == "run" || os.Args[1] == "run-allow" {
 		if len(os.Args) < 3 {
-			fmt.Println("Usage: go run cmd/cli/main.go run <input...> [--allow]")
+			fmt.Println("Usage: go run cmd/cli/main.go run <input...>")
 			fmt.Println("       go run cmd/cli/main.go run-allow <input...>")
 			os.Exit(1)
 		}
 
 		allowAll := os.Args[1] == "run-allow"
 
-		userInput := strings.ReplaceAll(strings.Join(os.Args[2:], " "), `\n`, "\n")
+		raw := strings.ReplaceAll(strings.Join(os.Args[2:], " "), `\n`, "\n")
+		imagePattern := regexp.MustCompile(`--image\s+(\S+)`)
+		var imagePaths []string
+		for _, m := range imagePattern.FindAllStringSubmatch(raw, -1) {
+			imagePaths = append(imagePaths, m[1])
+		}
+		userInput := strings.TrimSpace(imagePattern.ReplaceAllString(raw, ""))
 
 		agentRegistry := getAgentRegistry()
 		scanner := skill.NewScanner()
@@ -80,7 +86,7 @@ func main() {
 		}
 
 		if err := runEvents(ctx, cancel, func(ch chan<- agentTypes.Event) error {
-			return exec.Run(ctx, selectorBot, agentRegistry, scanner, userInput, ch, allowAll)
+			return exec.Run(ctx, selectorBot, agentRegistry, scanner, userInput, imagePaths, ch, allowAll)
 		}); err != nil && ctx.Err() == nil {
 			slog.Error("failed to execute", slog.String("error", err.Error()))
 			os.Exit(1)

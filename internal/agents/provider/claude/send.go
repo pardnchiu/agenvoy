@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/pardnchiu/agenvoy/internal/agents/exec"
 	agentTypes "github.com/pardnchiu/agenvoy/internal/agents/types"
@@ -18,7 +19,12 @@ const (
 )
 
 func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput string, events chan<- agentTypes.Event, allowAll bool) error {
-	return exec.Execute(ctx, a, a.workDir, skill, userInput, events, allowAll)
+	return exec.Execute(ctx, exec.ExecData{
+		Agent:   a,
+		WorkDir: a.workDir,
+		Skill:   skill,
+		Input:   userInput,
+	}, events, allowAll)
 }
 
 func (a *Agent) Send(ctx context.Context, messages []agentTypes.Message, tools []toolTypes.Tool) (*agentTypes.Output, error) {
@@ -96,10 +102,52 @@ func (a *Agent) convertToMessage(message agentTypes.Message) map[string]any {
 		}
 	}
 
+	if parts, ok := message.Content.([]agentTypes.ContentPart); ok {
+		var content []map[string]any
+		for _, part := range parts {
+			if part.Type == "text" {
+				content = append(content, map[string]any{
+					"type": "text",
+					"text": part.Text,
+				})
+			} else if part.Type == "image_url" && part.ImageURL != nil {
+				mediaType, data, ok := parseDataURL(part.ImageURL.URL)
+				if !ok {
+					continue
+				}
+				content = append(content, map[string]any{
+					"type": "image",
+					"source": map[string]any{
+						"type":       "base64",
+						"media_type": mediaType,
+						"data":       data,
+					},
+				})
+			}
+		}
+		return map[string]any{
+			"role":    message.Role,
+			"content": content,
+		}
+	}
+
 	return map[string]any{
 		"role":    message.Role,
 		"content": message.Content,
 	}
+}
+
+func parseDataURL(url string) (mediaType, data string, ok bool) {
+	// data:<mediaType>;base64,<data>
+	if len(url) < 5 || url[:5] != "data:" {
+		return "", "", false
+	}
+	rest := url[5:]
+	semi := strings.Index(rest, ";base64,")
+	if semi < 0 {
+		return "", "", false
+	}
+	return rest[:semi], rest[semi+8:], true
 }
 
 func (a *Agent) convertToTools(tools []toolTypes.Tool) []map[string]any {

@@ -2,6 +2,16 @@ package agentTypes
 
 import "encoding/json"
 
+type ContentPart struct {
+	Type     string    `json:"type"`
+	Text     string    `json:"text,omitempty"`
+	ImageURL *ImageURL `json:"image_url,omitempty"`
+}
+
+type ImageURL struct {
+	URL string `json:"url"`
+}
+
 type Message struct {
 	Role       string     `json:"role"`
 	Content    any        `json:"content,omitempty"`

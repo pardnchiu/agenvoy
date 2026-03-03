@@ -3,9 +3,11 @@ package exec
 import (
 	"crypto/rand"
 	_ "embed"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,8 +25,30 @@ type IndexData struct {
 	SessionID string `json:"session_id"`
 }
 
-func getSession(prompt string, userInput string) (*agentTypes.AgentSession, error) {
-	trimInput := strings.TrimSpace(userInput)
+func buildContent(text string, imagePaths []string) any {
+	if len(imagePaths) == 0 {
+		return text
+	}
+	parts := []agentTypes.ContentPart{
+		{Type: "text", Text: text},
+	}
+	for _, path := range imagePaths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		mime := http.DetectContentType(data)
+		dataURL := fmt.Sprintf("data:%s;base64,%s", mime, base64.StdEncoding.EncodeToString(data))
+		parts = append(parts, agentTypes.ContentPart{
+			Type:     "image_url",
+			ImageURL: &agentTypes.ImageURL{URL: dataURL},
+		})
+	}
+	return parts
+}
+
+func getSession(prompt string, execData ExecData) (*agentTypes.AgentSession, error) {
+	trimInput := strings.TrimSpace(execData.Input)
 
 	now := fmt.Sprintf("%d", time.Now().Unix())
 	session := agentTypes.AgentSession{
@@ -109,13 +133,14 @@ func getSession(prompt string, userInput string) (*agentTypes.AgentSession, erro
 				})
 			}
 
+			userText := fmt.Sprintf("ts:%s\n%s", now, trimInput)
 			session.Histories = append(session.Histories, agentTypes.Message{
 				Role:    "user",
-				Content: fmt.Sprintf("ts:%s\n%s", now, trimInput),
+				Content: userText,
 			})
 			session.Messages = append(session.Messages, agentTypes.Message{
 				Role:    "user",
-				Content: fmt.Sprintf("ts:%s\n%s", now, trimInput),
+				Content: buildContent(userText, execData.Images),
 			})
 		}
 
@@ -126,13 +151,14 @@ func getSession(prompt string, userInput string) (*agentTypes.AgentSession, erro
 			return nil, fmt.Errorf("newSessionID: %w", err)
 		}
 
+		userText := fmt.Sprintf("ts:%s\n%s", now, trimInput)
 		session.Histories = append(session.Histories, agentTypes.Message{
 			Role:    "user",
-			Content: fmt.Sprintf("ts:%s\n%s", now, trimInput),
+			Content: userText,
 		})
 		session.Messages = append(session.Messages, agentTypes.Message{
 			Role:    "user",
-			Content: fmt.Sprintf("ts:%s\n%s", now, trimInput),
+			Content: buildContent(userText, execData.Images),
 		})
 
 		indexDataBytes, err := json.Marshal(IndexData{SessionID: sessionID})

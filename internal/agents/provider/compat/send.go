@@ -12,7 +12,12 @@ import (
 )
 
 func (a *Agent) Execute(ctx context.Context, skill *skill.Skill, userInput string, events chan<- agentTypes.Event, allowAll bool) error {
-	return exec.Execute(ctx, a, a.workDir, skill, userInput, events, allowAll)
+	return exec.Execute(ctx, exec.ExecData{
+		Agent:   a,
+		WorkDir: a.workDir,
+		Skill:   skill,
+		Input:   userInput,
+	}, events, allowAll)
 }
 
 func (a *Agent) Send(ctx context.Context, messages []agentTypes.Message, tools []toolTypes.Tool) (*agentTypes.Output, error) {
