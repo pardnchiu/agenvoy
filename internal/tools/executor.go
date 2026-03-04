@@ -99,7 +99,7 @@ func Execute(ctx context.Context, e *toolTypes.Executor, name string, args json.
 	}
 
 	switch name {
-	case "read_file", "list_files", "glob_files", "search_content", "search_history", "write_file", "patch_edit":
+	case "read_file", "list_files", "glob_files", "search_content", "search_history", "write_file", "patch_edit", "remember_error", "search_errors":
 		return file.Routes(e, name, args)
 
 	case "send_http_request", "fetch_yahoo_finance", "fetch_google_rss", "fetch_weather":

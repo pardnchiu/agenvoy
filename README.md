@@ -44,6 +44,7 @@ API keys are stored in the OS-native keychain (macOS Keychain via `security`, Li
 ```mermaid
 graph TB
     CLI["CLI (cmd/cli)"] --> Run["exec.Run"]
+    Discord["Discord Bot (cmd/server)"] --> Run
     Run --> SelSkill["selectSkill\n(Selector Bot)"]
     Run --> SelAgent["selectAgent\n(Selector Bot)"]
     SelSkill --> Skills["Skill Scanner\n9 standard paths"]
@@ -61,18 +62,20 @@ graph TB
 ```
 agenvoy/
 ├── cmd/
-│   └── cli/
-│       ├── main.go                  # CLI entry point
-│       ├── addProvider.go           # Interactive provider setup
-│       ├── getAgentRegistry.go      # Multi-provider Agent Registry init
-│       ├── printTool.go             # ANSI color output helpers
-│       └── runEvents.go             # Event loop and interactive confirm
+│   ├── cli/
+│   │   ├── main.go                  # CLI entry point
+│   │   ├── addProvider.go           # Interactive provider setup
+│   │   ├── getAgentRegistry.go      # Multi-provider Agent Registry init
+│   │   ├── printTool.go             # ANSI color output helpers
+│   │   └── runEvents.go             # Event loop and interactive confirm
+│   └── server/
+│       └── main.go                  # Discord bot entry point
 ├── internal/
 │   ├── agents/
 │   │   ├── exec/                    # Execution core (routing, tool loop, session management)
 │   │   ├── provider/                # 6 AI backends (copilot/openai/claude/gemini/nvidia/compat)
 │   │   └── types/                   # Shared interfaces (Agent, Message, Output)
-│   ├── discord/                     # Optional Discord bot integration
+│   ├── discord/                     # Discord bot integration
 │   ├── keychain/                    # OS keychain credential storage
 │   ├── skill/                       # Concurrent skill scanning and parsing
 │   ├── tools/                       # Tool executor and 15 built-in tools

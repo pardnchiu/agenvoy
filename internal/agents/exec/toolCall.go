@@ -8,6 +8,7 @@ import (
 
 	agentTypes "github.com/pardnchiu/agenvoy/internal/agents/types"
 	"github.com/pardnchiu/agenvoy/internal/tools"
+	"github.com/pardnchiu/agenvoy/internal/tools/file"
 	toolTypes "github.com/pardnchiu/agenvoy/internal/tools/types"
 )
 
@@ -77,7 +78,17 @@ func toolCall(ctx context.Context, exec *toolTypes.Executor, choice agentTypes.O
 
 		result, err := tools.Execute(ctx, exec, toolName, json.RawMessage(tool.Function.Arguments))
 		if err != nil {
-			result = "no data"
+			if hint := file.SearchErrorMemory(toolName, err.Error(), 3); hint != "" {
+				result = hint
+			} else {
+				result = "no data"
+			}
+		} else if result == "" || result == "no data" {
+			if hint := file.SearchErrorMemory(toolName, "no data", 3); hint != "" {
+				result = hint
+			} else {
+				result = "no data"
+			}
 		}
 
 		if result != "" {

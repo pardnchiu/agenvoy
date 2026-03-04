@@ -36,6 +36,13 @@ go build -o agenvoy ./cmd/cli
 go get github.com/pardnchiu/agenvoy
 ```
 
+### Discord Bot Server
+
+```bash
+go build -o agenvoy-server ./cmd/server
+DISCORD_TOKEN=your_token ./agenvoy-server
+```
+
 ## Configuration
 
 ### Add a Provider (Interactive)
@@ -167,10 +174,16 @@ agenvoy add
 
 Interactive setup for any supported provider. Credentials are saved to the OS keychain.
 
-### List All Available Skills
+### List Configured Models
 
 ```bash
 agenvoy list
+```
+
+### List All Available Skills
+
+```bash
+agenvoy list skills
 ```
 
 Example output:
@@ -190,7 +203,7 @@ Found 3 skill(s):
 ### Run a Task (Interactive Mode)
 
 ```bash
-agenvoy run "Check TSMC stock price today"
+agenvoy run Check TSMC stock price today
 ```
 
 A confirmation prompt appears before each tool call:
@@ -205,10 +218,30 @@ A confirmation prompt appears before each tool call:
 ### Run a Task (Automatic Mode)
 
 ```bash
-agenvoy run "Generate README" --allow
+agenvoy run-allow Generate README
 ```
 
-`--allow` skips all tool confirmation prompts and runs fully automatically.
+`run-allow` skips all tool confirmation prompts and runs fully automatically.
+
+### Multi-line Input
+
+Multi-word input is passed as multiple arguments and joined automatically — no quoting required. Two styles are supported:
+
+Shell line continuation (natural multi-line):
+
+```bash
+agenvoy run Fix the bug in main.go \
+  The error is: index out of range \
+  Here is the relevant code snippet
+```
+
+Inline `\n` escape (single-line equivalent):
+
+```bash
+agenvoy run Fix the bug in main.go\nThe error is: index out of range
+```
+
+Both produce identical input to the agent.
 
 ### Use as a Library
 
@@ -260,7 +293,7 @@ func main() {
 
     go func() {
         defer close(events)
-        if err := exec.Run(ctx, selectorBot, registry, scanner, "Check TSMC stock price", events, true); err != nil {
+        if err := exec.Run(ctx, selectorBot, registry, scanner, "Check TSMC stock price", nil, events, true); err != nil {
             fmt.Println("Error:", err)
         }
     }()
@@ -283,25 +316,33 @@ func main() {
 | Command | Syntax | Description |
 |---------|--------|-------------|
 | `add` | `agenvoy add` | Interactively register a provider and store credentials in the OS keychain |
-| `list` | `agenvoy list` | List all discovered Skills |
-| `run` | `agenvoy run <input> [--allow]` | Execute a task |
+| `remove` | `agenvoy remove` | Interactively remove a configured provider |
+| `list` | `agenvoy list` | List configured models |
+| `list skills` | `agenvoy list skills` | List all discovered Skills |
+| `run` | `agenvoy run <input...> [--image <path>]...` | Execute a task (interactive mode, confirms before each tool call) |
+| `run-allow` | `agenvoy run-allow <input...> [--image <path>]...` | Execute a task (automatic mode, skips all confirmations) |
 
-### Flags
+### Image Input
 
-| Flag | Description |
-|------|-------------|
-| `--allow` | Skip all interactive tool confirmation prompts |
+Attach one or more images with `--image <path>`. The flag is extracted from the input string before it is sent to the agent:
+
+```bash
+agenvoy run Describe this chart --image ./chart.png
+agenvoy run-allow Compare these two screenshots --image /tmp/before.png --image /tmp/after.png
+```
+
+> **Note:** Image input is not supported by the `nvidia` provider.
 
 ### Supported Agent Providers
 
-| Provider | Auth Method | Default Model | Environment Variable |
-|----------|-------------|---------------|----------------------|
-| `copilot` | Device Code interactive login | `gpt-4.1` | — |
-| `openai` | API Key | `gpt-5-mini` | `OPENAI_API_KEY` |
-| `claude` | API Key | `claude-sonnet-4-5` | `ANTHROPIC_API_KEY` |
-| `gemini` | API Key | `gemini-2.5-pro` | `GEMINI_API_KEY` |
-| `nvidia` | API Key | `openai/gpt-oss-120b` | `NVIDIA_API_KEY` |
-| `compat` | Optional API Key | any | `COMPAT_{NAME}_API_KEY` |
+| Provider | Auth Method | Default Model | Environment Variable | Image Input |
+|----------|-------------|---------------|----------------------|-------------|
+| `copilot` | Device Code interactive login | `gpt-4.1` | — | ✓ |
+| `openai` | API Key | `gpt-5-mini` | `OPENAI_API_KEY` | ✓ |
+| `claude` | API Key | `claude-sonnet-4-5` | `ANTHROPIC_API_KEY` | ✓ |
+| `gemini` | API Key | `gemini-2.5-pro` | `GEMINI_API_KEY` | ✓ |
+| `nvidia` | API Key | `openai/gpt-oss-120b` | `NVIDIA_API_KEY` | ✗ |
+| `compat` | Optional API Key | any | `COMPAT_{NAME}_API_KEY` | depends |
 
 Model format: `{provider}@{model-name}`, e.g. `claude@claude-opus-4-6`.
 Compat format: `compat[{name}]@{model}`, e.g. `compat[ollama]@qwen3:8b`.
@@ -363,6 +404,7 @@ func Run(
     registry AgentRegistry,   // Available agent list
     scanner  *skill.Scanner,  // Skill scanner
     input    string,          // User input
+    images   []string,        // Image paths (optional)
     events   chan<- Event,    // Event output channel
     allowAll bool,            // true = skip all tool confirmations
 ) error

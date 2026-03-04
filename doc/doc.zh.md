@@ -36,6 +36,13 @@ go build -o agenvoy ./cmd/cli
 go get github.com/pardnchiu/agenvoy
 ```
 
+### Discord Bot Server
+
+```bash
+go build -o agenvoy-server ./cmd/server
+DISCORD_TOKEN=your_token ./agenvoy-server
+```
+
 ## 設定
 
 ### 新增 Provider（互動式）
@@ -167,10 +174,16 @@ agenvoy add
 
 互動式設定任意支援的 Provider，憑證儲存至 OS Keychain。
 
-### 列出所有可用 Skill
+### 列出已設定的模型
 
 ```bash
 agenvoy list
+```
+
+### 列出所有可用 Skill
+
+```bash
+agenvoy list skills
 ```
 
 輸出範例：
@@ -190,7 +203,7 @@ Found 3 skill(s):
 ### 執行任務（互動模式）
 
 ```bash
-agenvoy run "查詢台積電今日股價"
+agenvoy run 查詢台積電今日股價
 ```
 
 每次工具呼叫前會出現確認提示：
@@ -205,10 +218,30 @@ agenvoy run "查詢台積電今日股價"
 ### 執行任務（自動模式）
 
 ```bash
-agenvoy run "生成 README" --allow
+agenvoy run-allow 生成 README
 ```
 
-`--allow` 跳過所有工具確認提示，完全自動執行。
+`run-allow` 跳過所有工具確認提示，完全自動執行。
+
+### 多行輸入
+
+多個單詞直接作為多個 arg 傳入並自動串接，無需引號包裹。支援兩種寫法：
+
+Shell Line Continuation（自然多行）：
+
+```bash
+agenvoy run 修正 main.go 的 bug \
+  錯誤訊息：index out of range \
+  以下是相關程式碼片段
+```
+
+內嵌 `\n` 跳脫（單行等效寫法）：
+
+```bash
+agenvoy run 修正 main.go 的 bug\n錯誤訊息：index out of range
+```
+
+兩種寫法傳入 Agent 的內容完全相同。
 
 ### 作為函式庫使用
 
@@ -260,7 +293,7 @@ func main() {
 
     go func() {
         defer close(events)
-        if err := exec.Run(ctx, selectorBot, registry, scanner, "查詢台積電股價", events, true); err != nil {
+        if err := exec.Run(ctx, selectorBot, registry, scanner, "查詢台積電股價", nil, events, true); err != nil {
             fmt.Println("Error:", err)
         }
     }()
@@ -283,25 +316,33 @@ func main() {
 | 指令 | 語法 | 說明 |
 |------|------|------|
 | `add` | `agenvoy add` | 互動式設定 Provider，憑證儲存至 OS Keychain |
-| `list` | `agenvoy list` | 列出所有已掃描到的 Skill |
-| `run` | `agenvoy run <input> [--allow]` | 執行任務 |
+| `remove` | `agenvoy remove` | 互動式移除已設定的 Provider |
+| `list` | `agenvoy list` | 列出已設定的模型 |
+| `list skills` | `agenvoy list skills` | 列出所有已掃描的 Skill |
+| `run` | `agenvoy run <input...> [--image <path>]...` | 執行任務（互動模式，每次 Tool Call 前確認） |
+| `run-allow` | `agenvoy run-allow <input...> [--image <path>]...` | 執行任務（自動模式，跳過所有確認） |
 
-### 旗標
+### 圖片輸入
 
-| 旗標 | 說明 |
-|------|------|
-| `--allow` | 跳過所有工具呼叫的互動確認提示 |
+以 `--image <path>` 附加圖片，支援多個。該旗標會在傳給 Agent 前從輸入字串中提取：
+
+```bash
+agenvoy run 描述這張圖表 --image ./chart.png
+agenvoy run-allow 比較這兩張截圖 --image /tmp/before.png --image /tmp/after.png
+```
+
+> **注意：** `nvidia` provider 不支援圖片輸入。
 
 ### 支援的 Agent Provider
 
-| Provider | 認證方式 | 預設模型 | 環境變數 |
-|----------|----------|----------|----------|
-| `copilot` | Device Code 互動登入 | `gpt-4.1` | — |
-| `openai` | API Key | `gpt-5-mini` | `OPENAI_API_KEY` |
-| `claude` | API Key | `claude-sonnet-4-5` | `ANTHROPIC_API_KEY` |
-| `gemini` | API Key | `gemini-2.5-pro` | `GEMINI_API_KEY` |
-| `nvidia` | API Key | `openai/gpt-oss-120b` | `NVIDIA_API_KEY` |
-| `compat` | 選填 API Key | 任意 | `COMPAT_{NAME}_API_KEY` |
+| Provider | 認證方式 | 預設模型 | 環境變數 | 圖片輸入 |
+|----------|----------|----------|----------|----------|
+| `copilot` | Device Code 互動登入 | `gpt-4.1` | — | ✓ |
+| `openai` | API Key | `gpt-5-mini` | `OPENAI_API_KEY` | ✓ |
+| `claude` | API Key | `claude-sonnet-4-5` | `ANTHROPIC_API_KEY` | ✓ |
+| `gemini` | API Key | `gemini-2.5-pro` | `GEMINI_API_KEY` | ✓ |
+| `nvidia` | API Key | `openai/gpt-oss-120b` | `NVIDIA_API_KEY` | ✗ |
+| `compat` | 選填 API Key | 任意 | `COMPAT_{NAME}_API_KEY` | 取決於後端 |
 
 模型格式：`{provider}@{model-name}`，例如 `claude@claude-opus-4-6`。
 Compat 格式：`compat[{name}]@{model}`，例如 `compat[ollama]@qwen3:8b`。
@@ -363,6 +404,7 @@ func Run(
     registry AgentRegistry,   // 可用 Agent 清單
     scanner  *skill.Scanner,  // Skill 掃描器
     input    string,          // 使用者輸入
+    images   []string,        // 圖片路徑（選用）
     events   chan<- Event,    // 事件輸出通道
     allowAll bool,            // true = 跳過所有工具確認
 ) error

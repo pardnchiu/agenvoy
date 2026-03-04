@@ -21,6 +21,10 @@ import (
 //go:embed prompt/summaryPrompt.md
 var summaryPrompt string
 
+const (
+	MaxHistoryMessages = 16
+)
+
 type IndexData struct {
 	SessionID string `json:"session_id"`
 }
@@ -120,8 +124,8 @@ func getSession(prompt string, execData ExecData) (*agentTypes.AgentSession, err
 			if err := json.Unmarshal(historyData, &oldHistory); err == nil {
 				session.Histories = oldHistory
 			}
-			if len(oldHistory) > 8 {
-				oldHistory = oldHistory[len(oldHistory)-8:]
+			if len(oldHistory) > MaxHistoryMessages {
+				oldHistory = oldHistory[len(oldHistory)-MaxHistoryMessages:]
 			}
 			session.Messages = append(session.Messages, oldHistory...)
 

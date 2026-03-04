@@ -29,7 +29,7 @@
 
 ### 雙層路由 Agentic 執行引擎
 
-每次執行前，輕量級 Selector Bot 執行兩項並發 LLM 路由決策：從 9 個標準路徑並發掃描的 Markdown 檔案中匹配最佳 Skill，並從 Agent Registry 選出最合適的後端。執行迴圈最多運行 16 次（一般模式）或 128 次（Skill 模式），對已執行的 Tool Call 進行快取去重，並在達到迭代上限時自動觸發摘要流程，確保始終返回連貫的最終回應。
+每次執行前，輕量級 Selector Bot 並發執行兩項 LLM 路由決策：從 9 個標準路徑掃描的 Markdown Skill 檔案中匹配最佳技能，並從 Agent Registry 選出最合適的後端 Provider。執行迴圈在一般模式下最多運行 16 次、Skill 模式下最多 128 次，對重複的 Tool Call 進行快取去重，並在達到迭代上限時自動觸發摘要流程，確保始終返回連貫的最終回應。
 
 ### 零程式碼 REST API 工具掛載
 
@@ -44,6 +44,7 @@ API 金鑰儲存於 OS 原生 Keychain（macOS 使用 `security`，Linux 使用 
 ```mermaid
 graph TB
     CLI["CLI (cmd/cli)"] --> Run["exec.Run"]
+    Discord["Discord Bot (cmd/server)"] --> Run
     Run --> SelSkill["selectSkill\n(Selector Bot)"]
     Run --> SelAgent["selectAgent\n(Selector Bot)"]
     SelSkill --> Skills["Skill Scanner\n9 個標準路徑"]
@@ -61,18 +62,20 @@ graph TB
 ```
 agenvoy/
 ├── cmd/
-│   └── cli/
-│       ├── main.go                  # CLI 進入點
-│       ├── addProvider.go           # 互動式 Provider 設定
-│       ├── getAgentRegistry.go      # 多 Provider Agent Registry 初始化
-│       ├── printTool.go             # ANSI 色彩輸出工具
-│       └── runEvents.go             # 事件迴圈與互動確認
+│   ├── cli/
+│   │   ├── main.go                  # CLI 進入點
+│   │   ├── addProvider.go           # 互動式 Provider 設定
+│   │   ├── getAgentRegistry.go      # 多 Provider Agent Registry 初始化
+│   │   ├── printTool.go             # ANSI 色彩輸出工具
+│   │   └── runEvents.go             # 事件迴圈與互動確認
+│   └── server/
+│       └── main.go                  # Discord Bot 進入點
 ├── internal/
 │   ├── agents/
 │   │   ├── exec/                    # 執行核心（路由、工具迴圈、Session 管理）
 │   │   ├── provider/                # 6 個 AI 後端（copilot/openai/claude/gemini/nvidia/compat）
 │   │   └── types/                   # 共用介面（Agent、Message、Output）
-│   ├── discord/                     # 選用 Discord Bot 整合
+│   ├── discord/                     # Discord Bot 整合
 │   ├── keychain/                    # OS Keychain 憑證儲存
 │   ├── skill/                       # 並發 Skill 掃描與解析
 │   ├── tools/                       # 工具執行器與 15 個內建工具

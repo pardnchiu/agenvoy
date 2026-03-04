@@ -46,7 +46,11 @@ func runEvents(_ context.Context, cancel context.CancelFunc, fn func(chan<- agen
 			fmt.Printf("\033[2K\r[*] Agent: %s\n", ev.Text)
 
 		case agentTypes.EventText:
-			fmt.Printf("[*] %s\n", ev.Text)
+			if strings.HasPrefix(ev.Text, "Agent:") || strings.HasPrefix(ev.Text, "Tool:") || strings.HasPrefix(ev.Text, "Result:") {
+				fmt.Printf("[*] %s\n", ev.Text)
+			} else {
+				fmt.Printf("%s\n", ev.Text)
+			}
 
 		case agentTypes.EventToolCall:
 			printTool(ev)
@@ -80,7 +84,15 @@ func runEvents(_ context.Context, cancel context.CancelFunc, fn func(chan<- agen
 			fmt.Printf("[x] Skipped: %s\n", ev.ToolName)
 
 		case agentTypes.EventToolResult:
-			fmt.Printf("[*] Result: %s\n", strings.TrimSpace(ev.Result))
+			var skipped = []string{
+				"fetch_google_rss",
+				"fetch_page",
+				"search_web",
+				"fetch_weather",
+			}
+			if !strings.Contains(strings.Join(skipped, ","), ev.ToolName) {
+				fmt.Printf("[*] Result: %s\n", strings.TrimSpace(ev.Result))
+			}
 
 		case agentTypes.EventError:
 			if ev.Err != nil {

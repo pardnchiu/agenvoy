@@ -26,6 +26,7 @@ var skillExtensionPrompt string
 const (
 	MaxToolIterations  = 16
 	MaxSkillIterations = 128
+	MaxEmptyResponses  = 8
 )
 
 type ExecData struct {
@@ -36,7 +37,6 @@ type ExecData struct {
 	Images  []string
 }
 
-// func Execute(ctx context.Context, agent agentTypes.Agent, workDir string, skill *skill.Skill, userInput string, imagePaths []string, events chan<- agentTypes.Event, allowAll bool) error {
 func Execute(ctx context.Context, data ExecData, events chan<- agentTypes.Event, allowAll bool) error {
 	// if skill is empty, then treat as no skill
 	if data.Skill != nil && data.Skill.Content == "" {
@@ -66,8 +66,10 @@ func Execute(ctx context.Context, data ExecData, events chan<- agentTypes.Event,
 
 	alreadyCall := make(map[string]string)
 	emptyCount := 0
-	const maxEmpty = 8
 	for i := 0; i < limit; i++ {
+		if i > 0 {
+			time.Sleep(500 * time.Millisecond)
+		}
 		resp, err := data.Agent.Send(ctx, session.Messages, exec.Tools)
 		if err != nil {
 			return err
@@ -75,7 +77,7 @@ func Execute(ctx context.Context, data ExecData, events chan<- agentTypes.Event,
 
 		if len(resp.Choices) == 0 {
 			emptyCount++
-			if emptyCount >= maxEmpty {
+			if emptyCount >= MaxEmptyResponses {
 				events <- agentTypes.Event{Type: agentTypes.EventText, Text: "工具無法取得資料，請稍後再試或改用其他方式查詢。"}
 				events <- agentTypes.Event{Type: agentTypes.EventDone}
 				return nil

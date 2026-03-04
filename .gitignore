@@ -4,5 +4,6 @@
 !examples/.config
 .doc
 *.out
+.claude
 
 docker-compose.yml

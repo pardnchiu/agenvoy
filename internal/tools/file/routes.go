@@ -77,6 +77,38 @@ func Routes(e *toolTypes.Executor, name string, args json.RawMessage) (string, e
 			return "", fmt.Errorf("json.Unmarshal: %w", err)
 		}
 		return patch(e, params.Path, params.OldString, params.NewString)
+
+	case "remember_error":
+		var params struct {
+			ToolName string   `json:"tool_name"`
+			Keywords []string `json:"keywords"`
+			Symptom  string   `json:"symptom"`
+			Cause    string   `json:"cause"`
+			Action   string   `json:"action"`
+			Outcome  string   `json:"outcome"`
+		}
+		if err := json.Unmarshal(args, &params); err != nil {
+			return "", fmt.Errorf("json.Unmarshal: %w", err)
+		}
+		return SaveErrorMemory(e.SessionID, ErrorMemory{
+			ToolName: params.ToolName,
+			Keywords: params.Keywords,
+			Symptom:  params.Symptom,
+			Cause:    params.Cause,
+			Action:   params.Action,
+			Outcome:  params.Outcome,
+		})
+
+	case "search_errors":
+		var params struct {
+			Keyword string `json:"keyword"`
+			Limit   int    `json:"limit"`
+		}
+		if err := json.Unmarshal(args, &params); err != nil {
+			return "", fmt.Errorf("json.Unmarshal: %w", err)
+		}
+		return SearchErrors(params.Keyword, params.Limit)
+
 	default:
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}
