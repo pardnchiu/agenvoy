@@ -42,7 +42,7 @@ func TestScanner_Scan(t *testing.T) {
 	emptyDir := filepath.Join(dir, "no-skill")
 	os.MkdirAll(emptyDir, 0755)
 
-	s := &Scanner{paths: []string{dir}}
+	s := &SkillScanner{paths: []string{dir}}
 	s.Scan()
 
 	names := s.List()
@@ -76,7 +76,7 @@ func TestScanner_DuplicateSkillName(t *testing.T) {
 			0644)
 	}
 
-	s := &Scanner{paths: []string{dir1, dir2}}
+	s := &SkillScanner{paths: []string{dir1, dir2}}
 	s.Scan()
 
 	count := 0
@@ -91,7 +91,7 @@ func TestScanner_DuplicateSkillName(t *testing.T) {
 }
 
 func TestScanner_NonexistentPath(t *testing.T) {
-	s := &Scanner{paths: []string{"/nonexistent/path/that/does/not/exist"}}
+	s := &SkillScanner{paths: []string{"/nonexistent/path/that/does/not/exist"}}
 	s.Scan() // should not panic or error
 	if s.Skills == nil {
 		t.Fatal("Skills should not be nil even with nonexistent paths")
@@ -173,7 +173,7 @@ func TestScanner_ReadDirError(t *testing.T) {
 	tmpFile.Close()
 	t.Cleanup(func() { os.Remove(tmpFile.Name()) })
 
-	s := &Scanner{paths: []string{tmpFile.Name()}}
+	s := &SkillScanner{paths: []string{tmpFile.Name()}}
 	s.Scan() // must not panic
 
 	if s.Skills == nil {
@@ -194,7 +194,7 @@ func TestScanner_ParseError_UnreadableFile(t *testing.T) {
 	os.Chmod(path, 0000) // make unreadable → parser returns error
 	t.Cleanup(func() { os.Chmod(path, 0600) })
 
-	s := &Scanner{paths: []string{dir}}
+	s := &SkillScanner{paths: []string{dir}}
 	s.Scan() // should warn and skip, not panic
 
 	for _, n := range s.List() {

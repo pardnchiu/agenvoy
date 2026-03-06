@@ -56,7 +56,7 @@ func New(model ...string) (*Agent, error) {
 	}
 
 	agent := &Agent{
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: 2 * time.Minute},
 		model:      usedModel,
 		workDir:    workDir,
 		tokenDir:   filepath.Join(configDir.Home, "copilot_token.json"),

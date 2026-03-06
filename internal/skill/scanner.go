@@ -9,10 +9,16 @@ import (
 	"sync"
 )
 
-type Scanner struct {
+type SkillScanner struct {
 	paths  []string
 	Skills *SkillList
 	mu     sync.RWMutex
+}
+
+type SkillList struct {
+	ByName map[string]*Skill
+	ByPath map[string]*Skill
+	Paths  []string
 }
 
 type Skill struct {
@@ -25,13 +31,7 @@ type Skill struct {
 	Hash        string
 }
 
-type SkillList struct {
-	ByName map[string]*Skill
-	ByPath map[string]*Skill
-	Paths  []string
-}
-
-func NewScanner() *Scanner {
+func NewScanner() *SkillScanner {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		home = "."
@@ -50,7 +50,7 @@ func NewScanner() *Scanner {
 		"/mnt/skills/examples",
 	}
 
-	scanner := &Scanner{
+	scanner := &SkillScanner{
 		paths: paths,
 	}
 	scanner.Scan()
@@ -58,7 +58,7 @@ func NewScanner() *Scanner {
 	return scanner
 }
 
-func (s *Scanner) Scan() {
+func (s *SkillScanner) Scan() {
 	list := &SkillList{
 		ByName: make(map[string]*Skill),
 		ByPath: make(map[string]*Skill),
@@ -106,7 +106,7 @@ func (s *Scanner) Scan() {
 	s.mu.Unlock()
 }
 
-func (s *Scanner) scan(root string, skillChan chan<- *Skill) error {
+func (s *SkillScanner) scan(root string, skillChan chan<- *Skill) error {
 	// * path not exists
 	if _, err := os.Stat(root); os.IsNotExist(err) {
 		return nil
@@ -143,7 +143,7 @@ func (s *Scanner) scan(root string, skillChan chan<- *Skill) error {
 	return nil
 }
 
-func (s *Scanner) List() []string {
+func (s *SkillScanner) List() []string {
 	names := make([]string, 0, len(s.Skills.ByName))
 	for name := range s.Skills.ByName {
 		names = append(names, strings.TrimSpace(name))

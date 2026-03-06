@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/pardnchiu/agenvoy/internal/keychain"
 )
@@ -34,7 +35,7 @@ func New(model ...string) (*Agent, error) {
 	workDir, _ := os.Getwd()
 
 	return &Agent{
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: 2 * time.Minute},
 		model:      usedModel,
 		apiKey:     apiKey,
 		workDir:    workDir,
