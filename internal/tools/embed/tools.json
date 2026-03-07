@@ -290,7 +290,7 @@
     "type": "function",
     "function": {
       "name": "fetch_page",
-      "description": "使用 Chrome 瀏覽器開啟網頁，等待 JS 完整渲染後擷取內容，以 Markdown 格式返回。適合需要 JS 渲染的 SPA、動態頁面、或一般靜態頁面。",
+      "description": "使用 Chrome 瀏覽器開啟網頁，等待 JS 完整渲染後擷取主要內容，以純文字 Markdown 格式返回給 agent 閱讀。此工具不會寫入任何檔案，內容僅存在於 agent context 中。適合查詢、摘要、回答問題。若使用者目的是將網頁存到本地端（含「下載」、「儲存」、「存檔」等意圖），必須改用 download_page，不可使用此工具再搭配 write_file。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -300,6 +300,27 @@
           }
         },
         "required": ["url"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "download_page",
+      "description": "【下載/儲存網頁到本地端時使用此工具】使用 Chrome 瀏覽器取得完整網頁內容（含所有連結與圖片連結），直接寫入指定的本地檔案路徑，回傳寫入摘要。不需要再呼叫 write_file。只要使用者的意圖是將網頁「存到本地」、「下載」、「寫成檔案」，一律使用此工具而非 fetch_page。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "href": {
+            "type": "string",
+            "description": "要下載的完整網址（需包含 https://）"
+          },
+          "save_to": {
+            "type": "string",
+            "description": "要儲存的目標檔案路徑（絕對路徑或相對於專案根目錄），例如 ./downloads/page.md"
+          }
+        },
+        "required": ["href", "save_to"]
       }
     }
   },

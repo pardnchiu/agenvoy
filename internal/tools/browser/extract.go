@@ -2,120 +2,77 @@ package browser
 
 import (
 	"fmt"
-	"slices"
+	"net/url"
 	"strings"
+	"time"
 
-	"golang.org/x/net/html"
+	"github.com/go-shiori/go-readability"
 )
 
-var skips = []string{
-	"script", "style", "noscript", "svg", "iframe", "canvas", "video", "audio", "nav", "header", "footer", "aside", "form", "button", "input", "select", "textarea", "label", "link", "meta",
+type HTMLParser struct {
+	URL         string `json:"url"`
+	Title       string `json:"title"`
+	Author      string `json:"author"`
+	PublishedAt string `json:"published_at"`
+	Excerpt     string `json:"excerpt"`
+	Markdown    string `json:"markdown"`
 }
 
-var blocks = []string{
-	"div", "section", "article", "main", "p", "ul", "ol", "li", "blockquote", "pre", "table", "tr", "td", "th",
-}
-
-func extract(raw, title, url string) (string, error) {
-	doc, err := html.Parse(strings.NewReader(raw))
+func extract(href, content string) (*HTMLParser, error) {
+	parsedUrl, err := url.Parse(href)
 	if err != nil {
-		return "", fmt.Errorf("html.Parse: %w", err)
+		return nil, fmt.Errorf("url.Parse: %w", err)
 	}
 
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "---\ntitle: %s\nurl: %s\n---\n\n", title, url)
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		switch n.Type {
-		case html.TextNode:
-			sb.WriteString(n.Data)
-			return
-
-		case html.ElementNode:
-			tag := strings.ToLower(n.Data)
-
-			if slices.Contains(skips, tag) {
-				return
-			}
-
-			switch tag {
-			case "h1", "h2", "h3", "h4", "h5", "h6":
-				level := int(tag[1] - '0')
-				sb.WriteString("\n" + strings.Repeat("#", level) + " ")
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					walk(c)
-				}
-				sb.WriteString("\n")
-				return
-
-			case "a":
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					walk(c)
-				}
-				return
-
-			case "strong", "b":
-				sb.WriteString("**")
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					walk(c)
-				}
-				sb.WriteString("**")
-				return
-
-			case "em", "i":
-				sb.WriteString("*")
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					walk(c)
-				}
-				sb.WriteString("*")
-				return
-
-			case "br":
-				sb.WriteString("\n")
-				return
-
-			case "li":
-				sb.WriteString("\n- ")
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					walk(c)
-				}
-				return
-			}
-
-			if slices.Contains(blocks, tag) {
-				sb.WriteString("\n")
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					walk(c)
-				}
-				sb.WriteString("\n")
-				return
-			}
-		}
-
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
+	article, err := readability.FromReader(strings.NewReader(content), parsedUrl)
+	if err != nil {
+		return nil, fmt.Errorf("readability.FromReader: %w", err)
 	}
-	walk(doc)
 
-	return strings.TrimSpace(collapse(sb.String())), nil
+	parser := &HTMLParser{
+		URL:     href,
+		Title:   article.Title,
+		Author:  article.Byline,
+		Excerpt: article.Excerpt,
+	}
+	if article.PublishedTime != nil {
+		parser.PublishedAt = article.PublishedTime.Format(time.RFC3339)
+	}
+
+	newContent := strings.TrimSpace(article.Content)
+	if newContent == "" {
+		newContent = content
+	}
+
+	parser.Markdown, err = transToMarkdown(newContent, href, true)
+	if err != nil {
+		return nil, fmt.Errorf("transToMarkdown: %w", err)
+	}
+	parser.Markdown = fullContent(parser)
+
+	return parser, nil
 }
 
-// * remove empty line like [\n]{2,} to be [\n]{2}
-func collapse(s string) string {
-	lines := strings.Split(s, "\n")
-	var out []string
-	blanks := 0
-	for _, l := range lines {
-		if strings.TrimSpace(l) == "" {
-			blanks++
-			if blanks <= 1 {
-				out = append(out, "")
-			}
-		} else {
-			blanks = 0
-			out = append(out, strings.TrimSpace(l))
-		}
+func fullContent(parser *HTMLParser) string {
+	var sb strings.Builder
+	sb.WriteString("---\n")
+	writeField(&sb, "title", parser.Title)
+	writeField(&sb, "url", parser.URL)
+	if parser.Author != "" {
+		writeField(&sb, "author", parser.Author)
 	}
-	return strings.Join(out, "\n")
+	if parser.PublishedAt != "" && parser.PublishedAt != "0001-01-01T00:00:00Z" {
+		writeField(&sb, "published_at", parser.PublishedAt)
+	}
+	if parser.Excerpt != "" {
+		writeField(&sb, "excerpt", parser.Excerpt)
+	}
+	sb.WriteString("---\n")
+	sb.WriteString(parser.Markdown)
+	return sb.String()
+}
+
+func writeField(sb *strings.Builder, key, val string) {
+	val = strings.ReplaceAll(val, `"`, `\"`)
+	fmt.Fprintf(sb, "%s: \"%s\"\n", key, val)
 }

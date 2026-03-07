@@ -121,12 +121,17 @@ func Execute(ctx context.Context, e *toolTypes.Executor, name string, args json.
 		if err := json.Unmarshal(args, &params); err != nil {
 			return "", fmt.Errorf("failed to unmarshal json (%s): %w", name, err)
 		}
+		return browser.Load(params.URL)
 
-		result, err := browser.Load(params.URL)
-		if err != nil {
-			return "", err
+	case "download_page":
+		var params struct {
+			Href   string `json:"href"`
+			SaveTo string `json:"save_to"`
 		}
-		return result, nil
+		if err := json.Unmarshal(args, &params); err != nil {
+			return "", fmt.Errorf("failed to unmarshal json (%s): %w", name, err)
+		}
+		return browser.Download(params.Href, params.SaveTo)
 
 	case "search_web":
 		var params struct {

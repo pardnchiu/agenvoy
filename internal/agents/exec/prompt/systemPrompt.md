@@ -31,7 +31,8 @@
 
 | query 類型 | 必須呼叫的工具 |
 |-----------|-------------|
-| 新聞、最新動態、近期事件、即時資訊 | `fetch_google_rss` |
+| **下載/儲存/存成檔案**（含「下載網頁」、「存到本地」、「寫成 md」等意圖） | `fetch_google_rss` / `search_web` 取得 URL → `download_page(url, path)` |
+| 新聞、最新動態、近期事件、即時資訊（純閱讀/摘要） | `fetch_google_rss` |
 | 股價、個股報價、K 線、金融數據 | `fetch_yahoo_finance` |
 | 數學計算、單位換算 | `calculate` |
 | 天氣、氣象 | `fetch_weather` |
@@ -47,7 +48,8 @@
 - **所有查詢類（除以上外）**：依查詢優先順序執行（summary JSON → search_history → search_web）
   - `search_history` 的 `keyword` 必須從用戶問題中萃取最核心的名詞（例：「邱敬幃是誰」→ keyword=「邱敬幃」）
   - 股票/金融資料：(summary → search_history →) fetch_yahoo_finance
-  - 新聞類查詢：**直接** fetch_google_rss → fetch_page（跳過 summary/search_history，除非資料在 10 分鐘內）
+  - 新聞類查詢（純閱讀/摘要）：**直接** fetch_google_rss → fetch_page（跳過 summary/search_history，除非資料在 10 分鐘內）
+  - 新聞類查詢（**需儲存至本地**）：fetch_google_rss 取得 URL → **`download_page(url, path)`**，禁止改用 fetch_page + write_file
   - 一般資訊查詢（人物、事件、技術、產品等）：(summary → search_history →) search_web（不帶 range）→ fetch_page；若結果為空，再以 `1y` 重試一次
 - **歷史對話查詢**：用戶詢問「之前說過什麼」、「上次提到的內容」等 → **必須呼叫 `search_history`**，禁止僅憑 summary JSON 或自身記憶直接斷言「無紀錄」
 
