@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pardnchiu/agenvoy/internal/tools/file"
 	toolTypes "github.com/pardnchiu/agenvoy/internal/tools/types"
 )
 
@@ -21,6 +22,18 @@ func runCommand(ctx context.Context, e *toolTypes.Executor, command string) (str
 	command = strings.TrimSpace(command)
 	if command == "" {
 		return "", fmt.Errorf("failed to run command: command is empty")
+	}
+
+	// block access to sensitive paths via whitelisted commands (e.g. cat, grep, find)
+	for _, dir := range file.DeniedConfig.Dirs {
+		if strings.Contains(command, "/"+dir+"/") || strings.Contains(command, "/"+dir) || strings.Contains(command, dir+"/") {
+			return "", fmt.Errorf("access denied: %s", dir)
+		}
+	}
+	for _, f := range file.DeniedConfig.Files {
+		if strings.Contains(command, f) {
+			return "", fmt.Errorf("access denied: %s", f)
+		}
 	}
 
 	// * template allow all for testing

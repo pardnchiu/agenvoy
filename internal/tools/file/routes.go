@@ -26,6 +26,9 @@ func Routes(e *toolTypes.Executor, name string, args json.RawMessage) (string, e
 		if err := json.Unmarshal(args, &params); err != nil {
 			return "", fmt.Errorf("json.Unmarshal: %w", err)
 		}
+		if isDenied(params.Path) {
+			return "", fmt.Errorf("access denied: %s", params.Path)
+		}
 		return list(e, params.Path, params.Recursive)
 
 	case "glob_files":
@@ -65,6 +68,9 @@ func Routes(e *toolTypes.Executor, name string, args json.RawMessage) (string, e
 		if err := json.Unmarshal(args, &params); err != nil {
 			return "", fmt.Errorf("json.Unmarshal: %w", err)
 		}
+		if isDenied(params.Path) {
+			return "", fmt.Errorf("access denied: %s", params.Path)
+		}
 		return write(e, params.Path, params.Content)
 
 	case "patch_edit":
@@ -75,6 +81,9 @@ func Routes(e *toolTypes.Executor, name string, args json.RawMessage) (string, e
 		}
 		if err := json.Unmarshal(args, &params); err != nil {
 			return "", fmt.Errorf("json.Unmarshal: %w", err)
+		}
+		if isDenied(params.Path) {
+			return "", fmt.Errorf("access denied: %s", params.Path)
 		}
 		return patch(e, params.Path, params.OldString, params.NewString)
 
