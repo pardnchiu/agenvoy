@@ -1,0 +1,108 @@
+package discord
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"regexp"
+	"strings"
+
+	"github.com/bwmarrin/discordgo"
+	"github.com/pardnchiu/agenvoy/internal/agents/exec"
+	agentTypes "github.com/pardnchiu/agenvoy/internal/agents/types"
+	discordTypes "github.com/pardnchiu/agenvoy/internal/discord/types"
+)
+
+func run(ctx context.Context, dcBot *discordTypes.DiscordBot, dcSession *discordgo.Session, dcMessageCreate *discordgo.MessageCreate, receiveMessage *discordTypes.ReceiveMessage) error {
+	workDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("os.UserHomeDir: %w", err)
+	}
+
+	skill := exec.SelectSkill(ctx, dcBot.PlannerAgent, dcBot.SkillScanner, receiveMessage.Content)
+	agent := exec.SelectAgent(ctx, dcBot.PlannerAgent, dcBot.AgentRegistry, receiveMessage.Content)
+
+	execData := exec.ExecData{
+		Agent:   agent,
+		WorkDir: workDir,
+		Skill:   skill,
+		Content: receiveMessage.Content,
+	}
+
+	session, err := getSession(ctx, receiveMessage.GuildID, receiveMessage.ChannelID, receiveMessage.AuthorID, receiveMessage.Content, receiveMessage.ImageInputs, receiveMessage.FileInputs, execData)
+	if err != nil {
+		return fmt.Errorf("loadDiscordSession: %w", err)
+	}
+
+	interactionMax := 128
+	if skill == nil {
+		interactionMax = 16
+	}
+	events := make(chan agentTypes.Event, interactionMax)
+
+	go func() {
+		err := exec.Execute(ctx, execData, session, events, true)
+		if err != nil {
+			slog.Warn("exec.Execute",
+				slog.String("error", err.Error()))
+		}
+		close(events)
+	}()
+
+	var replyText string
+	for e := range events {
+		switch e.Type {
+		case agentTypes.EventSkillResult:
+			slog.Info("EventSkillSelect",
+				slog.Any("skill", e))
+		case agentTypes.EventAgentResult:
+			slog.Info("EventAgentResult",
+				slog.Any("agent", e))
+		case agentTypes.EventText:
+			slog.Info("EventText",
+				slog.Any("text", e.Text))
+			replyText = e.Text
+		case agentTypes.EventToolCall:
+			slog.Info("EventToolCall",
+				slog.Any("tool", e.ToolName))
+		// * use full name for remindering
+		case agentTypes.EventSkillSelect,
+			agentTypes.EventAgentSelect,
+			agentTypes.EventToolCallStart,
+			agentTypes.EventToolCallEnd,
+			agentTypes.EventToolConfirm,
+			agentTypes.EventToolCallText,
+			agentTypes.EventToolResult,
+			agentTypes.EventToolSkipped,
+			agentTypes.EventDone:
+			break
+		}
+	}
+
+	replyText = strings.TrimSpace(regexp.MustCompile(`^ts:\d+\n`).ReplaceAllString(replyText, ""))
+	if replyText == "" {
+		return fmt.Errorf("no reply")
+	}
+
+	fileMarker := regexp.MustCompile(`\[SEND_FILE:([^\]]+)\]`)
+	var filePaths []string
+	for _, match := range fileMarker.FindAllStringSubmatch(replyText, -1) {
+		filePaths = append(filePaths, strings.TrimSpace(match[1]))
+	}
+	replyText = strings.TrimSpace(fileMarker.ReplaceAllString(replyText, ""))
+
+	replyText = fmt.Sprintf("%s\n-# %s", replyText, agent.Name())
+
+	dr := &discordTypes.DiscordReply{
+		Session:   dcSession,
+		ChannelID: dcMessageCreate.ChannelID,
+		Reference: dcMessageCreate.Reference(),
+	}
+	if err := Reply(ctx, dr, discordTypes.ReplyMessage{Content: replyText, FilePaths: filePaths}); err != nil {
+		slog.Warn("ReplyDiscord",
+			slog.String("error", err.Error()))
+	}
+
+	return nil
+}
