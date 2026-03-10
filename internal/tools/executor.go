@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pardnchiu/agenvoy/extensions"
 	"github.com/pardnchiu/agenvoy/internal/tools/apiAdapter"
 	"github.com/pardnchiu/agenvoy/internal/tools/apis"
 	"github.com/pardnchiu/agenvoy/internal/tools/apis/searchWeb"
@@ -40,6 +41,7 @@ func NewExecutor(workPath, sessionID string) (*toolTypes.Executor, error) {
 	}
 
 	apiToolbox := apiAdapter.New()
+	apiToolbox.LoadFS(extensions.APIs, "apis")
 
 	if configDir, err := utils.GetConfigDir("apis"); err == nil {
 		apiToolbox.Load(configDir.Home)
@@ -102,7 +104,7 @@ func Execute(ctx context.Context, e *toolTypes.Executor, name string, args json.
 	case "read_file", "list_files", "glob_files", "search_content", "search_history", "write_file", "patch_edit", "remember_error", "search_errors":
 		return file.Routes(e, name, args)
 
-	case "send_http_request", "fetch_yahoo_finance", "fetch_google_rss", "fetch_weather":
+	case "send_http_request", "fetch_google_rss":
 		return apis.Routes(e, name, args)
 
 	case "run_command":

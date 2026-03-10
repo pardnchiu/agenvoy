@@ -43,7 +43,9 @@ func main() {
 		selectorBot = registry.Fallback
 	}
 
-	slog.Info("agent registry built", slog.Int("entries", len(registry.Entries)), slog.String("fallback", registry.Fallback.Name()))
+	slog.Info("agent registry built",
+		slog.Int("entries", len(registry.Entries)),
+		slog.String("fallback", registry.Fallback.Name()))
 	bot, err := discord.New(selectorBot, registry, scanner)
 	if bot != nil {
 		defer discord.Close(bot)

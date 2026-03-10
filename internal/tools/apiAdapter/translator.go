@@ -3,6 +3,7 @@ package apiAdapter
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -108,6 +109,42 @@ func (t *Translator) check(doc *APIDocumentData) error {
 		doc.Response.Format = "json"
 	}
 
+	return nil
+}
+
+func (t *Translator) LoadFS(fsys fs.FS, dir string) error {
+	entries, err := fs.ReadDir(fsys, dir)
+	if err != nil {
+		return fmt.Errorf("fs.ReadDir: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		data, err := fs.ReadFile(fsys, fmt.Sprintf("%s/%s", dir, entry.Name()))
+		if err != nil {
+			slog.Warn("fs.ReadFile",
+				slog.String("error", err.Error()))
+			continue
+		}
+
+		var doc APIDocumentData
+		if err := json.Unmarshal(data, &doc); err != nil {
+			slog.Warn("json.Unmarshal",
+				slog.String("error", err.Error()))
+			continue
+		}
+
+		if err := t.check(&doc); err != nil {
+			slog.Warn("t.check",
+				slog.String("error", err.Error()))
+			continue
+		}
+
+		t.apis[doc.Name] = &doc
+	}
 	return nil
 }
 
