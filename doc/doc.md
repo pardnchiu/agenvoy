@@ -71,6 +71,19 @@ Place JSON config files in `~/.config/agenvoy/apis/` or `./examples/apis/` to ad
 
 ## Usage
 
+### Using Make
+
+From the project root (requires source clone):
+
+| Target | Command | Description |
+|--------|---------|-------------|
+| `make discord` | `go run ./cmd/server/main.go` | Start the Discord bot server |
+| `make add` | `go run ./cmd/cli/ add` | Interactively add a provider/model |
+| `make remove` | `go run ./cmd/cli/ remove` | Remove a configured provider |
+| `make planner` | `go run ./cmd/cli/ planner` | Set the planner model |
+| `make cli <input...>` | `go run ./cmd/cli/ run <input>` | Run agent with tool confirmation |
+| `make run <input...>` | `go run ./cmd/cli/ run-allow <input>` | Run agent with all tools auto-approved |
+
 ### Basic
 
 List all configured models:

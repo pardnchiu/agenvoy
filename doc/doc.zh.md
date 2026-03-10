@@ -71,6 +71,19 @@ DISCORD_GUILD_ID=optional_guild_id
 
 ## 使用方式
 
+### 使用 Make
+
+於專案根目錄執行（需從原始碼 Clone）：
+
+| Target | 實際指令 | 說明 |
+|--------|---------|------|
+| `make discord` | `go run ./cmd/server/main.go` | 啟動 Discord Bot Server |
+| `make add` | `go run ./cmd/cli/ add` | 互動式新增 Provider／模型 |
+| `make remove` | `go run ./cmd/cli/ remove` | 移除已設定的 Provider |
+| `make planner` | `go run ./cmd/cli/ planner` | 設定 Planner 模型 |
+| `make cli <input...>` | `go run ./cmd/cli/ run <input>` | 以確認模式執行 Agent |
+| `make run <input...>` | `go run ./cmd/cli/ run-allow <input>` | 自動批准所有 Tool Call 並執行 Agent |
+
 ### 基礎用法
 
 列出所有已設定的模型：
