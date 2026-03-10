@@ -48,7 +48,7 @@ func GetAgentEntries() []agentTypes.AgentEntry {
 	return []agentTypes.AgentEntry{}
 }
 
-func SelectAgent(ctx context.Context, bot agentTypes.Agent, registry agentTypes.AgentRegistry, userInput string) agentTypes.Agent {
+func SelectAgent(ctx context.Context, bot agentTypes.Agent, registry agentTypes.AgentRegistry, userInput string, hasSkill bool) agentTypes.Agent {
 	trimInput := strings.TrimSpace(userInput)
 
 	if len(registry.Entries) == 0 {
@@ -65,6 +65,11 @@ func SelectAgent(ctx context.Context, bot agentTypes.Agent, registry agentTypes.
 		return registry.Fallback
 	}
 
+	userContent := strings.TrimSpace(trimInput)
+	if hasSkill {
+		userContent = "[執行 Skill] " + userContent
+	}
+
 	messages := []agentTypes.Message{
 		{
 			Role:    "system",
@@ -75,7 +80,7 @@ func SelectAgent(ctx context.Context, bot agentTypes.Agent, registry agentTypes.
 			Content: fmt.Sprintf(
 				"Available agents:\n%s\nUser request: %s",
 				string(agentJson),
-				strings.TrimSpace(trimInput),
+				userContent,
 			),
 		},
 	}

@@ -14,8 +14,9 @@
 
 | 任務特徵 | Provider 偏好（依序） |
 |---------|------|
+| Skill 執行（已匹配 Skill） | claude > openai > gemini > copilot > nvidia |
 | 圖片分析、視覺理解、圖表解讀 | claude > gemini > openai > copilot > nvidia |
-| 複雜推理、深度分析、長文生成、Skill 執行 | claude > gemini > openai > copilot > nvidia |
+| 複雜推理、深度分析、長文生成 | claude > gemini > openai > copilot > nvidia |
 | 程式碼補全、語法修正、單檔重構 | copilot > claude > gemini > openai > nvidia |
 | 多來源搜尋整合、交叉比對 | claude > gemini > openai > copilot > nvidia |
 | 純資訊擷取：天氣、匯率、新聞標題、翻譯短句 | nvidia > copilot > claude > gemini > openai |

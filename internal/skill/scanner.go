@@ -47,6 +47,7 @@ func NewScanner() *SkillScanner {
 		filepath.Join(home, ".opencode", "skills"),
 		filepath.Join(home, ".openai", "skills"),
 		filepath.Join(home, ".codex", "skills"),
+		filepath.Join(home, ".config", "agenvoy", "skills"),
 		"/mnt/skills/public",
 		"/mnt/skills/user",
 		"/mnt/skills/examples",

@@ -150,17 +150,17 @@ func GetSession(execData ExecData) (*agentTypes.AgentSession, error) {
 					Content: summary,
 				})
 			}
-
-			userText := fmt.Sprintf("ts:%s\n%s", now, trimInput)
-			session.Histories = append(session.Histories, agentTypes.Message{
-				Role:    "user",
-				Content: userText,
-			})
-			session.Messages = append(session.Messages, agentTypes.Message{
-				Role:    "user",
-				Content: buildContent(userText, execData.ImageInputs, execData.FileInputs),
-			})
 		}
+
+		userText := fmt.Sprintf("ts:%s\n%s", now, trimInput)
+		session.Histories = append(session.Histories, agentTypes.Message{
+			Role:    "user",
+			Content: userText,
+		})
+		session.Messages = append(session.Messages, agentTypes.Message{
+			Role:    "user",
+			Content: buildContent(userText, execData.ImageInputs, execData.FileInputs),
+		})
 
 	case os.IsNotExist(configErr):
 		// * config is not exist

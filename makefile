@@ -5,7 +5,7 @@ help:
 	@echo "  make discord            Start Discord bot server"
 	@echo "  make add                Add a provider/model"
 	@echo "  make remove             Remove a provider/model"
-	@echo "  make set-planner        Set planner model"
+	@echo "  make planner            Set planner model"
 	@echo "  make cli <input...>     Run agent (requires tool confirmation)"
 	@echo "  make run <input...>     Run agent (allow all tools)"
 

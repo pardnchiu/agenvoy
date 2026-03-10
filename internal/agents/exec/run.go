@@ -42,7 +42,7 @@ func Run(ctx context.Context, bot agentTypes.Agent, registry agentTypes.AgentReg
 		Type: agentTypes.EventAgentSelect,
 	}
 
-	agent := SelectAgent(ctx, bot, registry, trimInput)
+	agent := SelectAgent(ctx, bot, registry, trimInput, matchedSkill != nil)
 	events <- agentTypes.Event{
 		Type: agentTypes.EventAgentResult,
 		Text: strings.TrimSpace(agent.Name()),

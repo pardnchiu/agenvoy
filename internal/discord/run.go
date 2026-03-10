@@ -20,6 +20,8 @@ func run(ctx context.Context, dcBot *discordTypes.DiscordBot, dcSession *discord
 		return fmt.Errorf("os.UserHomeDir: %w", err)
 	}
 
+	dcBot.SkillScanner.Scan()
+
 	fileNames := make([]string, len(receiveMessage.FileInputs))
 	for i, f := range receiveMessage.FileInputs {
 		fileNames[i] = f.Name
@@ -28,7 +30,7 @@ func run(ctx context.Context, dcBot *discordTypes.DiscordBot, dcSession *discord
 	if skill != nil {
 		slog.Info("skill", slog.String("skill", skill.Name))
 	}
-	agent := exec.SelectAgent(ctx, dcBot.PlannerAgent, dcBot.AgentRegistry, receiveMessage.Content)
+	agent := exec.SelectAgent(ctx, dcBot.PlannerAgent, dcBot.AgentRegistry, receiveMessage.Content, skill != nil)
 
 	execData := exec.ExecData{
 		Agent:   agent,
