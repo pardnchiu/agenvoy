@@ -31,9 +31,9 @@
 
 A Selector Bot concurrently resolves the best Skill from Markdown files across 9 standard scan paths and selects the optimal AI backend from the provider registry — both in a single planning phase, not sequentially. The execution engine then runs a tool-call loop of up to 128 iterations, automatically triggering summarization when the limit is reached.
 
-### Security-First Tool Execution
+### Declarative Extension Architecture
 
-Every file operation is validated against an embedded blocklist covering SSH keys, `.env` files, and credential directories. Shell `rm` commands are intercepted and redirected to `.Trash` instead of permanent deletion, and shell execution is restricted to an explicit command whitelist. Over 16 built-in tools (file, API, browser, calculator, web search) and a JSON-config-driven custom API adapter provide full agentic capability within secure boundaries.
+Over 16 built-in tools are sandboxed by an embedded blocklist and a shell command whitelist — SSH keys, `.env` files, and credential directories are denied; `rm` is redirected to `.Trash`. Beyond the built-ins, two extension mechanisms add capability without code: API extensions are JSON files placed in `~/.config/agenvoy/apis/` that load at startup as AI-callable tools, supporting URL path parameters, request templating, and bearer/apikey auth; Skill extensions are Markdown instruction sets — SyncSkills automatically downloads official skills from GitHub on startup and scans all 9 standard paths for locally installed ones.
 
 ### OS Keychain Credential Management
 
@@ -64,6 +64,9 @@ agenvoy/
 ├── cmd/
 │   ├── cli/                # CLI: add / remove / list / run
 │   └── server/             # Discord bot entry point
+├── extensions/
+│   ├── apis/               # Embedded API extensions (JSON)
+│   └── skills/             # Embedded skill extensions (Markdown)
 ├── internal/
 │   ├── agents/
 │   │   ├── exec/           # Core execution engine and session loop
@@ -71,7 +74,7 @@ agenvoy/
 │   │   └── types/          # Agent interface + message types
 │   ├── discord/            # Discord slash commands + file attachments
 │   ├── skill/              # Markdown skill scanner and parser
-│   ├── tools/              # 16+ built-in tools + custom API adapter
+│   ├── tools/              # 16+ built-in tools + API extension adapter
 │   └── keychain/           # OS keychain credential storage
 ├── go.mod
 └── LICENSE
@@ -79,7 +82,7 @@ agenvoy/
 
 ## License
 
-This project is licensed under the [AGPL-3.0 LICENSE](LICENSE).
+This project is licensed under the [Apache-2.0 LICENSE](LICENSE).
 
 ## Author
 

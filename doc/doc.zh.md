@@ -65,9 +65,84 @@ DISCORD_TOKEN=your_token_here
 DISCORD_GUILD_ID=optional_guild_id
 ```
 
-### 自訂 API 工具
+### API Extension
 
-在 `~/.config/agenvoy/apis/` 或 `./examples/apis/` 放置 JSON 設定檔即可新增自訂 API 工具，格式與 OpenAI Tool Schema 相容，支援請求範本與回應解析。
+在 `~/.config/agenvoy/apis/` 放置 JSON 檔即可新增自訂 API 工具，每個檔案定義一個可呼叫的工具，啟動時自動載入：
+
+```json
+{
+  "name": "my_tool",
+  "description": "Agent 選擇工具時看到的說明",
+  "endpoint": {
+    "url": "https://api.example.com/resource/{id}",
+    "method": "GET",
+    "content_type": "json",
+    "timeout": 30
+  },
+  "auth": {
+    "type": "bearer",
+    "env": "MY_API_KEY"
+  },
+  "parameters": {
+    "id": {
+      "type": "string",
+      "description": "資源 ID",
+      "required": true
+    },
+    "status": {
+      "type": "string",
+      "description": "依狀態篩選",
+      "required": false,
+      "default": "active",
+      "enum": ["active", "inactive", "all"]
+    }
+  },
+  "response": {
+    "format": "json"
+  }
+}
+```
+
+| 欄位 | 必要 | 說明 |
+|------|------|------|
+| `name` | 是 | 向 Agent 登錄的 snake_case 工具名稱 |
+| `description` | 是 | LLM 選擇工具時看到的用途描述 |
+| `endpoint.url` | 是 | 目標 URL；`{param}` 佔位符在呼叫時替換為實際值 |
+| `endpoint.method` | 是 | HTTP 方法：`GET`、`POST`、`PUT`、`DELETE`、`PATCH` |
+| `endpoint.content_type` | 否 | `json`（預設）或 `form` |
+| `endpoint.headers` | 否 | 靜態 Header 鍵值對 |
+| `endpoint.timeout` | 否 | 請求逾時秒數（預設：30） |
+| `auth.type` | 否 | `bearer` 或 `apikey` |
+| `auth.env` | 否 | 持有憑證的環境變數名稱 |
+| `auth.header` | 否 | `apikey` 類型的 Header 名稱（預設：`X-API-Key`） |
+| `parameters` | 是 | 參數定義的 flat 物件 |
+| `response.format` | 否 | `json`（預設）或 `text` |
+
+每個參數支援：`type`（`string` / `integer` / `number` / `boolean`）、`description`、`required`、`default`、`enum`。
+
+### Skill Extension
+
+Skill Extension 是帶有 YAML Frontmatter 標頭的 Markdown 檔。啟動時 SyncSkills 會從 GitHub 儲存庫的 `extensions/skills` 下載本地尚不存在的 Skill 目錄，儲存至 `~/.config/agenvoy/skills/`。Agent 接著掃描所有 9 個標準路徑以建立可用 Skill 清單。
+
+Skill 檔案格式（`SKILL.md`）：
+
+```markdown
+---
+name: my-skill
+description: 顯示給 Agent 選擇時的一行摘要
+---
+
+# My Skill
+
+此 Skill 被選中時 Agent 遵循的指令...
+```
+
+掃描路徑（依優先順序）：
+
+| 優先級 | 路徑 |
+|--------|------|
+| 1 | `~/.config/agenvoy/skills/`（從 GitHub 同步 + 使用者自訂） |
+| 2–9 | XDG config 目錄、home 目錄與專案本地路徑 |
 
 ## 使用方式
 

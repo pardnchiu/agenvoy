@@ -65,9 +65,84 @@ DISCORD_TOKEN=your_token_here
 DISCORD_GUILD_ID=optional_guild_id
 ```
 
-### Custom API Tools
+### API Extensions
 
-Place JSON config files in `~/.config/agenvoy/apis/` or `./examples/apis/` to add custom API tools. Files follow the OpenAI Tool Schema format with request templating and response parsing support.
+Place JSON files in `~/.config/agenvoy/apis/` to add custom API tools. Each file defines one callable tool and is loaded at startup:
+
+```json
+{
+  "name": "my_tool",
+  "description": "What the agent sees when selecting this tool",
+  "endpoint": {
+    "url": "https://api.example.com/resource/{id}",
+    "method": "GET",
+    "content_type": "json",
+    "timeout": 30
+  },
+  "auth": {
+    "type": "bearer",
+    "env": "MY_API_KEY"
+  },
+  "parameters": {
+    "id": {
+      "type": "string",
+      "description": "Resource ID",
+      "required": true
+    },
+    "status": {
+      "type": "string",
+      "description": "Filter by status",
+      "required": false,
+      "default": "active",
+      "enum": ["active", "inactive", "all"]
+    }
+  },
+  "response": {
+    "format": "json"
+  }
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Snake_case tool name registered with the agent |
+| `description` | Yes | Purpose shown to the LLM for tool selection |
+| `endpoint.url` | Yes | Target URL; `{param}` placeholders are substituted at call time |
+| `endpoint.method` | Yes | HTTP method: `GET`, `POST`, `PUT`, `DELETE`, `PATCH` |
+| `endpoint.content_type` | No | `json` (default) or `form` |
+| `endpoint.headers` | No | Static headers map |
+| `endpoint.timeout` | No | Request timeout in seconds (default: 30) |
+| `auth.type` | No | `bearer` or `apikey` |
+| `auth.env` | No | Environment variable name holding the credential |
+| `auth.header` | No | Header name for `apikey` type (default: `X-API-Key`) |
+| `parameters` | Yes | Flat map of parameter definitions |
+| `response.format` | No | `json` (default) or `text` |
+
+Each parameter entry supports: `type` (`string` / `integer` / `number` / `boolean`), `description`, `required`, `default`, and `enum`.
+
+### Skill Extensions
+
+Skill extensions are Markdown files with a YAML frontmatter header. On startup, SyncSkills fetches any skill directories from `extensions/skills` in the GitHub repository that are not yet present locally, storing them in `~/.config/agenvoy/skills/`. The agent then scans all 9 standard paths to build the available skill list.
+
+Skill file format (`SKILL.md`):
+
+```markdown
+---
+name: my-skill
+description: One-line summary shown to the agent for skill selection
+---
+
+# My Skill
+
+Instructions the agent follows when this skill is selected...
+```
+
+Scan paths (in priority order):
+
+| Priority | Path |
+|----------|------|
+| 1 | `~/.config/agenvoy/skills/` (synced from GitHub + user-defined) |
+| 2–9 | XDG config dirs, home dir, and project-local paths |
 
 ## Usage
 

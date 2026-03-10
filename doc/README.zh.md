@@ -31,9 +31,9 @@
 
 Selector Bot 在單一規劃階段同時從 9 個標準路徑掃描 Markdown Skill 定義，並從 Provider 登錄檔中選出最合適的 AI 後端，兩者並行執行而非依序查找。配對完成後，執行引擎以最多 128 次迭代的工具呼叫迴圈完成任務，並在達到上限時自動觸發摘要。
 
-### 安全優先的工具執行
+### 宣告式 Extension 架構
 
-每次檔案操作都會對照內嵌的封鎖清單（涵蓋 SSH 金鑰、`.env` 檔案與憑證目錄）進行驗證。Shell `rm` 指令被攔截並導向 `.Trash` 而非永久刪除，Shell 執行亦限制於明確的指令白名單。16 個以上的內建工具（檔案、API、瀏覽器、計算機、網頁搜尋）與 JSON 設定驅動的自訂 API 適配器，在安全邊界內提供完整的 Agentic 能力。
+16 個以上的內建工具受到內嵌封鎖清單與 Shell 指令白名單的沙箱保護 — SSH 金鑰、`.env` 檔案及憑證目錄均被拒絕存取；`rm` 指令被攔截並導向 `.Trash`。在內建工具之外，兩層 Extension 機制無需修改程式碼即可擴充能力：API Extension 是放置於 `~/.config/agenvoy/apis/` 的 JSON 檔，啟動時自動載入並成為 AI 可呼叫的工具，支援 URL 路徑參數、請求範本與 Bearer/API Key 認證；Skill Extension 是 Markdown 格式的任務指令集，啟動時由 SyncSkills 自動從 GitHub 下載官方 Skill 至本地，並從 9 個標準路徑掃描所有可用 Skill。
 
 ### OS Keychain 憑證管理
 
@@ -79,7 +79,7 @@ agenvoy/
 
 ## 授權
 
-本專案採用 [AGPL-3.0 LICENSE](../LICENSE)。
+本專案採用 [Apache-2.0 LICENSE](../LICENSE)。
 
 ## Author
 
