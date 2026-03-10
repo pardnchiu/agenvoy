@@ -1,0 +1,31 @@
+{
+  "name": "rest_countries",
+  "description": "透過 REST Countries API 查詢國家詳細資訊，包含人口、面積、貨幣、語言、時區、國旗等。無需 API Key。",
+  "endpoint": {
+    "url": "https://restcountries.com/v3.1/{mode}/{query}",
+    "method": "GET",
+    "content_type": "json",
+    "timeout": 10
+  },
+  "parameters": {
+    "mode": {
+      "type": "string",
+      "description": "查詢模式：name（國家名稱）、alpha（ISO 代碼）、region（地區）、lang（語言）、all（全部）",
+      "required": true,
+      "enum": ["name", "alpha", "region", "lang", "all"]
+    },
+    "query": {
+      "type": "string",
+      "description": "查詢值，依 mode 而定：name 填國家名（例如 taiwan）、alpha 填 ISO 代碼（例如 TW）、region 填地區（例如 asia）、lang 填語言（例如 chinese）、all 填空字串",
+      "required": true
+    },
+    "fields": {
+      "type": "string",
+      "description": "指定回傳欄位（逗號分隔，減少資料量），例如 name,capital,population,flags,currencies,languages",
+      "required": false
+    }
+  },
+  "response": {
+    "format": "json"
+  }
+}

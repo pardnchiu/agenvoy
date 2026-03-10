@@ -1,0 +1,21 @@
+{
+  "name": "themealdb_search",
+  "description": "透過 TheMealDB API 搜尋食譜，包含食材、步驟、分類、產地與示範影片連結。無需 API Key。",
+  "endpoint": {
+    "url": "https://www.themealdb.com/api/json/v1/1/search.php",
+    "method": "GET",
+    "content_type": "json",
+    "timeout": 10
+  },
+  "parameters": {
+    "s": {
+      "type": "string",
+      "description": "食譜名稱搜尋，例如 Arrabiata、Chicken Tikka、Sushi。留空回傳所有食譜",
+      "required": false,
+      "default": ""
+    }
+  },
+  "response": {
+    "format": "json"
+  }
+}
