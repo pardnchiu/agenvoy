@@ -41,8 +41,7 @@ func SaveToolError(sessionID, toolName, args, errMsg string) string {
 		return hash
 	}
 
-	now := time.Now()
-	dir := filepath.Join(configDir.Home, sessionID, "tool_errors", now.Format("2006-01-02"))
+	dir := filepath.Join(configDir.Home, sessionID, "tool_errors")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return hash
 	}
@@ -56,20 +55,10 @@ func GetToolError(sessionID, hash string) string {
 		return ""
 	}
 
-	// * search across all date dirs
-	sessionDir := filepath.Join(configDir.Home, sessionID, "tool_errors")
-	entries, err := os.ReadDir(sessionDir)
+	path := filepath.Join(configDir.Home, sessionID, "tool_errors", hash+".json")
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return ""
 	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		path := filepath.Join(sessionDir, entry.Name(), hash+".json")
-		if data, err := os.ReadFile(path); err == nil {
-			return string(data)
-		}
-	}
-	return ""
+	return string(data)
 }

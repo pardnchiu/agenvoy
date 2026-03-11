@@ -41,13 +41,13 @@ func (a *Agent) Send(ctx context.Context, messages []agentTypes.Message, tools [
 		}
 	}
 
-	var systemPrompt string
+	var systemParts []string
 	var newMessages []map[string]any
 
 	for _, msg := range truncated {
 		if msg.Role == "system" {
-			if content, ok := msg.Content.(string); ok {
-				systemPrompt = content
+			if content, ok := msg.Content.(string); ok && content != "" {
+				systemParts = append(systemParts, content)
 			}
 			continue
 		}
@@ -65,7 +65,7 @@ func (a *Agent) Send(ctx context.Context, messages []agentTypes.Message, tools [
 		"model":       a.model,
 		"max_tokens":  provider.OutputTokens("claude", a.model),
 		"temperature": 0.2,
-		"system":      systemPrompt,
+		"system":      strings.Join(systemParts, "\n---\n"),
 		"messages":    newMessages,
 		"tools":       newTools,
 	}, "json")

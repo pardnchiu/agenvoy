@@ -105,7 +105,8 @@ func matchErrorMemory(rec ErrorMemory, lower string) bool {
 		return true
 	}
 	for _, keyword := range rec.Keywords {
-		if strings.Contains(strings.ToLower(keyword), lower) {
+		text := strings.ToLower(keyword)
+		if strings.Contains(text, lower) || strings.Contains(lower, text) {
 			return true
 		}
 	}

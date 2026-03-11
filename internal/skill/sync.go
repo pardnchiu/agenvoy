@@ -28,7 +28,7 @@ func SyncSkills(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	dir, err := utils.GetConfigDir(".config", "agenvoy", "skills")
+	dir, err := utils.GetConfigDir("skills")
 	if err != nil {
 		slog.Error("utils.GetConfigDir",
 			slog.String("error", err.Error()))
