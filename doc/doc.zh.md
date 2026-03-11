@@ -65,6 +65,8 @@ DISCORD_TOKEN=your_token_here
 DISCORD_GUILD_ID=optional_guild_id
 ```
 
+> 檔名含 `.example` 的檔案（如 `.env.example`）不受環境變數前綴封鎖規則限制，可安全讀取。
+
 ### API Extension
 
 在 `~/.config/agenvoy/apis/` 放置 JSON 檔即可新增自訂 API 工具，每個檔案定義一個可呼叫的工具，啟動時自動載入：
@@ -119,6 +121,25 @@ DISCORD_GUILD_ID=optional_guild_id
 | `response.format` | 否 | `json`（預設）或 `text` |
 
 每個參數支援：`type`（`string` / `integer` / `number` / `boolean`）、`description`、`required`、`default`、`enum`。
+
+#### 內嵌公開 API Extension
+
+以下 API Extension 已內嵌並於啟動時自動載入：
+
+| Extension | 分類 | 說明 |
+|-----------|------|------|
+| `nominatim` | 地理編碼 | OpenStreetMap 地理編碼與反向地理編碼 |
+| `coingecko` | 金融 | 加密貨幣價格與市場數據 |
+| `yahoo-finance-1/2` | 金融 | 股票報價與歷史數據 |
+| `wikipedia` | 資料 | Wikipedia 文章搜尋與內容 |
+| `world-bank` | 資料 | 世界銀行發展指標 |
+| `usgs-earthquake` | 資料 | USGS 地震數據 |
+| `themealdb` | 資料 | 食譜與餐點資料庫 |
+| `hackernews` | 資料 | Hacker News 熱門文章與項目 |
+| `rest-countries` | 資料 | 國家資訊與元數據 |
+| `exchange-rate` | 金融 | 貨幣匯率 |
+| `ip-api` | 網路 | IP 地理位置查詢 |
+| `open-meteo` | 天氣 | 開源天氣預報 API |
 
 ### Skill Extension
 
@@ -229,23 +250,30 @@ agenvoy remove
 | 工具 | 參數 | 說明 |
 |------|------|------|
 | `read_file` | `path` | 讀取指定路徑的檔案內容 |
-| `write_file` | `path`, `content` | 寫入或建立檔案 |
+| `write_file` | `path`, `content` | 寫入或建立檔案（原子性寫入） |
 | `list_files` | `path`, `recursive` | 列出目錄內容 |
 | `glob_files` | `pattern` | Glob 模式比對（如 `**/*.go`） |
 | `search_content` | `pattern`, `file_pattern` | Regex 搜尋檔案內容 |
-| `patch_edit` | `path`, `old`, `new` | 字串替換編輯 |
-| `search_history` | `query` | 查詢 Session 歷史記錄 |
-| `remember_error` | `key`, `decision` | 儲存工具錯誤決策 |
-| `search_errors` | `query` | 檢索錯誤知識庫 |
+| `patch_edit` | `path`, `old_string`, `new_string` | 字串替換編輯 |
+| `search_history` | `keyword`, `time_range` | 查詢 Session 歷史記錄 |
+| `get_tool_error` | `hash` | 透過 hash 取得失敗工具呼叫的完整錯誤詳情 |
+| `remember_error` | `tool_name`, `keywords`, `symptom`, `action` | 儲存工具錯誤決策 |
+| `search_errors` | `keyword` | 檢索錯誤知識庫 |
 | `fetch_yahoo_finance` | `symbol`, `interval`, `range` | 股票數據 |
 | `fetch_google_rss` | `keyword`, `time`, `lang` | Google 新聞 RSS |
 | `send_http_request` | `method`, `url`, `headers`, `body` | 通用 HTTP 請求 |
 | `fetch_weather` | `city`, `days`, `hourly_interval` | 天氣資訊 |
-| `search_web` | `query`, `time_range` | DuckDuckGo 網頁搜尋 |
+| `search_web` | `query`, `time_range` | 網頁搜尋 |
 | `fetch_page` | `url` | JS 渲染頁面轉 Markdown（唯讀） |
-| `download_page` | `url`, `path` | JS 渲染頁面儲存至檔案 |
+| `download_page` | `href`, `save_to` | JS 渲染頁面儲存至檔案 |
 | `run_command` | `command` | 執行白名單內的 Shell 指令 |
+| `write_scheduler_script` | `name`, `content` | 建立排程腳本檔案 |
+| `add_onetime_task` | `at`, `script` | 設定一次性定時任務 |
 | `calculate` | `expression` | 數學運算（sqrt、sin、cos、pow 等） |
+
+### 工具執行錯誤追蹤
+
+任何工具呼叫失敗時，錯誤會持久化至 Session 目錄的 `tool_errors/{date}/{hash}.json`，Agent 收到 `no data: {hash}` 作為結果。Agent 可呼叫 `get_tool_error` 帶入 8 位元 hex hash 取得完整錯誤資訊（tool 名稱、參數、錯誤訊息）。錯誤同時透過 `EventExecError` 事件即時通知：CLI 模式輸出至 stderr，Discord 模式附加於回覆頁尾。
 
 ### Agent 介面
 

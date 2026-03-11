@@ -65,6 +65,8 @@ DISCORD_TOKEN=your_token_here
 DISCORD_GUILD_ID=optional_guild_id
 ```
 
+> Files with `.example` in the name (e.g., `.env.example`) bypass the env prefix deny rule and are safe to read.
+
 ### API Extensions
 
 Place JSON files in `~/.config/agenvoy/apis/` to add custom API tools. Each file defines one callable tool and is loaded at startup:
@@ -119,6 +121,25 @@ Place JSON files in `~/.config/agenvoy/apis/` to add custom API tools. Each file
 | `response.format` | No | `json` (default) or `text` |
 
 Each parameter entry supports: `type` (`string` / `integer` / `number` / `boolean`), `description`, `required`, `default`, and `enum`.
+
+#### Embedded Public API Extensions
+
+The following API extensions are bundled and loaded automatically at startup:
+
+| Extension | Category | Description |
+|-----------|----------|-------------|
+| `nominatim` | Geocoding | OpenStreetMap geocoding and reverse geocoding |
+| `coingecko` | Finance | Cryptocurrency prices and market data |
+| `yahoo-finance-1/2` | Finance | Stock quotes and historical data |
+| `wikipedia` | Data | Wikipedia article search and content |
+| `world-bank` | Data | World Bank development indicators |
+| `usgs-earthquake` | Data | USGS earthquake feed |
+| `themealdb` | Data | Recipe and meal database |
+| `hackernews` | Data | Hacker News top stories and items |
+| `rest-countries` | Data | Country information and metadata |
+| `exchange-rate` | Finance | Currency exchange rates |
+| `ip-api` | Network | IP geolocation lookup |
+| `open-meteo` | Weather | Open-source weather forecast API |
 
 ### Skill Extensions
 
@@ -229,23 +250,30 @@ agenvoy remove
 | Tool | Parameters | Description |
 |------|------------|-------------|
 | `read_file` | `path` | Read file content at the specified path |
-| `write_file` | `path`, `content` | Write or create a file |
+| `write_file` | `path`, `content` | Write or create a file (atomic write) |
 | `list_files` | `path`, `recursive` | List directory contents |
 | `glob_files` | `pattern` | Glob pattern matching (e.g., `**/*.go`) |
 | `search_content` | `pattern`, `file_pattern` | Regex search across file contents |
-| `patch_edit` | `path`, `old`, `new` | String replace editing |
-| `search_history` | `query` | Query session history records |
-| `remember_error` | `key`, `decision` | Store tool error decisions |
-| `search_errors` | `query` | Retrieve error knowledge base |
+| `patch_edit` | `path`, `old_string`, `new_string` | String replace editing |
+| `search_history` | `keyword`, `time_range` | Query session history records |
+| `get_tool_error` | `hash` | Retrieve full error details for a failed tool call by hash |
+| `remember_error` | `tool_name`, `keywords`, `symptom`, `action` | Store tool error decisions |
+| `search_errors` | `keyword` | Retrieve error knowledge base |
 | `fetch_yahoo_finance` | `symbol`, `interval`, `range` | Stock market data |
 | `fetch_google_rss` | `keyword`, `time`, `lang` | Google News RSS feed |
 | `send_http_request` | `method`, `url`, `headers`, `body` | Generic HTTP request |
 | `fetch_weather` | `city`, `days`, `hourly_interval` | Weather information |
-| `search_web` | `query`, `time_range` | DuckDuckGo web search |
+| `search_web` | `query`, `time_range` | Web search |
 | `fetch_page` | `url` | JS-rendered page to Markdown (read-only) |
-| `download_page` | `url`, `path` | JS-rendered page saved to file |
+| `download_page` | `href`, `save_to` | JS-rendered page saved to file |
 | `run_command` | `command` | Execute whitelisted shell commands |
+| `write_scheduler_script` | `name`, `content` | Create a scheduler script file |
+| `add_onetime_task` | `at`, `script` | Schedule a one-time task at a given time |
 | `calculate` | `expression` | Math expressions (sqrt, sin, cos, pow, etc.) |
+
+### Tool Error Tracking
+
+When any tool call fails, the error is persisted to `tool_errors/{date}/{hash}.json` within the session directory and the agent receives `no data: {hash}`. The agent can call `get_tool_error` with the 8-character hex hash to retrieve the full error context (tool name, arguments, error message). Errors are also sent immediately via `EventExecError`: written to stderr in CLI mode, appended as a footer in Discord replies.
 
 ### Agent Interface
 

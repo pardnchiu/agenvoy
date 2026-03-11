@@ -33,7 +33,7 @@ A Selector Bot concurrently resolves the best Skill from Markdown files across 9
 
 ### Declarative Extension Architecture
 
-Over 16 built-in tools are sandboxed by an embedded blocklist and a shell command whitelist — SSH keys, `.env` files, and credential directories are denied; `rm` is redirected to `.Trash`. Beyond the built-ins, two extension mechanisms add capability without code: API extensions are JSON files placed in `~/.config/agenvoy/apis/` that load at startup as AI-callable tools, supporting URL path parameters, request templating, and bearer/apikey auth; Skill extensions are Markdown instruction sets — SyncSkills automatically downloads official skills from GitHub on startup and scans all 9 standard paths for locally installed ones.
+Over 19 built-in tools are sandboxed by an embedded blocklist and a shell command whitelist — SSH keys, `.env` files (excluding `.example` variants), and credential directories are denied; `rm` is redirected to `.Trash`. Beyond the built-ins, two extension mechanisms add capability without code: API extensions are JSON files placed in `~/.config/agenvoy/apis/` that load at startup as AI-callable tools, supporting URL path parameters, request templating, and bearer/apikey auth; over 13 public API extensions are embedded (geocoding, finance, data sources); Skill extensions are Markdown instruction sets — SyncSkills automatically downloads official skills from GitHub on startup and scans all 9 standard paths for locally installed ones.
 
 ### OS Keychain Credential Management
 
@@ -52,7 +52,7 @@ graph TB
     Execute --> Send["Agent.Send() — LLM call"]
     Send --> ToolCall["ToolCall() — deduplicated cache"]
     ToolCall --> Security["Security Gate\ndenied.json + whitelist"]
-    Security --> Tools["File / API / Browser / Shell"]
+    Security --> Tools["File / API / Browser / Shell / Cron"]
     Tools --> Send
     Send --> Output["Reply → CLI / Discord"]
 ```
@@ -65,16 +65,17 @@ agenvoy/
 │   ├── cli/                # CLI: add / remove / list / run
 │   └── server/             # Discord bot entry point
 ├── extensions/
-│   ├── apis/               # Embedded API extensions (JSON)
+│   ├── apis/               # Embedded API extensions (13+ JSON)
 │   └── skills/             # Embedded skill extensions (Markdown)
 ├── internal/
 │   ├── agents/
 │   │   ├── exec/           # Core execution engine and session loop
 │   │   ├── provider/       # 6 AI provider backends + model registry
 │   │   └── types/          # Agent interface + message types
+│   ├── cron/               # Scheduler daemon for one-time tasks
 │   ├── discord/            # Discord slash commands + file attachments
 │   ├── skill/              # Markdown skill scanner and parser
-│   ├── tools/              # 16+ built-in tools + API extension adapter
+│   ├── tools/              # 19+ built-in tools + cron + API extension adapter
 │   └── keychain/           # OS keychain credential storage
 ├── go.mod
 └── LICENSE

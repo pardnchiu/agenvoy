@@ -33,7 +33,7 @@ Selector Bot 在單一規劃階段同時從 9 個標準路徑掃描 Markdown Ski
 
 ### 宣告式 Extension 架構
 
-16 個以上的內建工具受到內嵌封鎖清單與 Shell 指令白名單的沙箱保護 — SSH 金鑰、`.env` 檔案及憑證目錄均被拒絕存取；`rm` 指令被攔截並導向 `.Trash`。在內建工具之外，兩層 Extension 機制無需修改程式碼即可擴充能力：API Extension 是放置於 `~/.config/agenvoy/apis/` 的 JSON 檔，啟動時自動載入並成為 AI 可呼叫的工具，支援 URL 路徑參數、請求範本與 Bearer/API Key 認證；Skill Extension 是 Markdown 格式的任務指令集，啟動時由 SyncSkills 自動從 GitHub 下載官方 Skill 至本地，並從 9 個標準路徑掃描所有可用 Skill。
+19 個以上的內建工具受到內嵌封鎖清單與 Shell 指令白名單的沙箱保護 — SSH 金鑰、`.env` 檔案（`.example` 變體除外）及憑證目錄均被拒絕存取；`rm` 指令被攔截並導向 `.Trash`。在內建工具之外，兩層 Extension 機制無需修改程式碼即可擴充能力：API Extension 是放置於 `~/.config/agenvoy/apis/` 的 JSON 檔，啟動時自動載入並成為 AI 可呼叫的工具，支援 URL 路徑參數、請求範本與 Bearer/API Key 認證；13 個以上的公開 API Extension 已內嵌（地理編碼、金融、資料來源）；Skill Extension 是 Markdown 格式的任務指令集，啟動時由 SyncSkills 自動從 GitHub 下載官方 Skill 至本地，並從 9 個標準路徑掃描所有可用 Skill。
 
 ### OS Keychain 憑證管理
 
@@ -52,7 +52,7 @@ graph TB
     Execute --> Send["Agent.Send() — LLM call"]
     Send --> ToolCall["ToolCall() — 去重快取"]
     ToolCall --> Security["Security Gate\ndenied.json + whitelist"]
-    Security --> Tools["File / API / Browser / Shell"]
+    Security --> Tools["File / API / Browser / Shell / Cron"]
     Tools --> Send
     Send --> Output["回覆 → CLI / Discord"]
 ```
@@ -64,14 +64,18 @@ agenvoy/
 ├── cmd/
 │   ├── cli/                # CLI：add / remove / list / run
 │   └── server/             # Discord Bot 進入點
+├── extensions/
+│   ├── apis/               # 內嵌 API Extension（13+ JSON）
+│   └── skills/             # 內嵌 Skill Extension（Markdown）
 ├── internal/
 │   ├── agents/
 │   │   ├── exec/           # 核心執行引擎與 Session 迴圈
 │   │   ├── provider/       # 6 個 AI Provider 後端 + 模型登錄檔
 │   │   └── types/          # Agent 介面 + Message 類型
+│   ├── cron/               # 一次性任務排程 Daemon
 │   ├── discord/            # Discord Slash Command + 檔案附件
 │   ├── skill/              # Markdown Skill 掃描器與解析器
-│   ├── tools/              # 16+ 內建工具 + 自訂 API 適配器
+│   ├── tools/              # 19+ 內建工具 + Cron + 自訂 API 適配器
 │   └── keychain/           # OS Keychain 憑證儲存
 ├── go.mod
 └── LICENSE
