@@ -24,8 +24,14 @@ type Content struct {
 type Part struct {
 	Text             string            `json:"text,omitempty"`
 	ThoughtSignature string            `json:"thoughtSignature,omitempty"`
+	InlineData       *InlineData       `json:"inlineData,omitempty"`
 	FunctionCall     *FunctionCall     `json:"functionCall,omitempty"`
 	FunctionResponse *FunctionResponse `json:"functionResponse,omitempty"`
+}
+
+type InlineData struct {
+	MimeType string `json:"mimeType"`
+	Data     string `json:"data"`
 }
 
 type FunctionCall struct {

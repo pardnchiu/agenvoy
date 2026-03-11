@@ -110,9 +110,30 @@ func (a *Agent) convertToContent(message agentTypes.Message) Content {
 		return content
 	}
 
-	if contentStr, ok := message.Content.(string); ok {
-		content.Parts = []Part{
-			{Text: contentStr},
+	switch v := message.Content.(type) {
+	case string:
+		content.Parts = []Part{{Text: v}}
+	case []agentTypes.ContentPart:
+		for _, p := range v {
+			switch p.Type {
+			case "text":
+				content.Parts = append(content.Parts, Part{Text: p.Text})
+			case "image_url":
+				if p.ImageURL == nil {
+					continue
+				}
+				// * to inlineData
+				url := p.ImageURL.URL
+				if strings.HasPrefix(url, "data:") {
+					if semi := strings.Index(url, ";base64,"); semi != -1 {
+						mimeType := url[5:semi]
+						b64 := url[semi+8:]
+						content.Parts = append(content.Parts, Part{
+							InlineData: &InlineData{MimeType: mimeType, Data: b64},
+						})
+					}
+				}
+			}
 		}
 	}
 

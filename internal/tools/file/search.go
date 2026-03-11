@@ -61,8 +61,8 @@ func search(e *toolTypes.Executor, pattern, filePattern string) (string, error) 
 
 		data, err := os.ReadFile(path)
 		if err != nil {
-			slog.Warn("failed to read file during search",
-				slog.String("error", err.Error()))
+			// slog.Warn("failed to read file during search",
+			// 	slog.String("error", err.Error()))
 			return nil
 		}
 
