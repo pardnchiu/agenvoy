@@ -94,6 +94,9 @@ func runEvents(_ context.Context, cancel context.CancelFunc, fn func(chan<- agen
 				fmt.Printf("[*] Result: %s\n", strings.TrimSpace(ev.Result))
 			}
 
+		case agentTypes.EventExecError:
+			fmt.Fprintf(os.Stderr, "[!] (%s) error: %s\n", ev.ToolName, ev.Text)
+
 		case agentTypes.EventError:
 			if ev.Err != nil {
 				fmt.Fprintf(os.Stderr, "[!] Error: %v\n", ev.Err)

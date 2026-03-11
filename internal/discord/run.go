@@ -60,6 +60,7 @@ func run(ctx context.Context, dcBot *discordTypes.DiscordBot, dcSession *discord
 	}()
 
 	var replyText string
+	var execErrors []string
 	for e := range events {
 		switch e.Type {
 		case agentTypes.EventSkillResult:
@@ -72,6 +73,12 @@ func run(ctx context.Context, dcBot *discordTypes.DiscordBot, dcSession *discord
 			slog.Info("EventText",
 				slog.Any("text", e.Text))
 			replyText = e.Text
+		case agentTypes.EventExecError:
+			slog.Warn("EventExecError",
+				slog.String("tool", e.ToolName),
+				slog.String("hash", e.Text))
+			execErrors = append(execErrors, fmt.Sprintf("`%s` → `%s`", e.ToolName, e.Text))
+
 		case agentTypes.EventToolCall:
 			slog.Info("EventToolCall",
 				slog.Any("tool", e.ToolName))
@@ -101,6 +108,9 @@ func run(ctx context.Context, dcBot *discordTypes.DiscordBot, dcSession *discord
 	}
 	replyText = strings.TrimSpace(fileMarker.ReplaceAllString(replyText, ""))
 
+	if len(execErrors) > 0 {
+		replyText = fmt.Sprintf("%s\n-# errors: %s", replyText, strings.Join(execErrors, ", "))
+	}
 	replyText = fmt.Sprintf("%s\n-# %s", replyText, agent.Name())
 
 	dr := &discordTypes.DiscordReply{

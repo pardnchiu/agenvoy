@@ -87,6 +87,19 @@ func Routes(e *toolTypes.Executor, name string, args json.RawMessage) (string, e
 		}
 		return patch(e, params.Path, params.OldString, params.NewString)
 
+	case "get_tool_error":
+		var params struct {
+			Hash string `json:"hash"`
+		}
+		if err := json.Unmarshal(args, &params); err != nil {
+			return "", fmt.Errorf("json.Unmarshal: %w", err)
+		}
+		result := GetToolError(e.SessionID, params.Hash)
+		if result == "" {
+			return "not found", nil
+		}
+		return result, nil
+
 	case "remember_error":
 		var params struct {
 			ToolName string   `json:"tool_name"`

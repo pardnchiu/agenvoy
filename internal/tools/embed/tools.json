@@ -292,6 +292,23 @@
   {
     "type": "function",
     "function": {
+      "name": "get_tool_error",
+      "description": "透過 hash 查詢工具執行錯誤的詳細資訊。當工具回傳 'no data: {hash}' 時，使用此工具取得完整錯誤內容（tool_name、args、error message）。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hash": {
+            "type": "string",
+            "description": "錯誤識別碼（8字元 hex），來自工具回傳的 'no data: {hash}'"
+          }
+        },
+        "required": ["hash"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
       "name": "remember_error",
       "description": "記錄工具執行錯誤的決策經驗到永久儲存，供後續 session 遇到相同問題時直接參考行動方案。確認根因與處理方式後呼叫。",
       "parameters": {

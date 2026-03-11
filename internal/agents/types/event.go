@@ -15,6 +15,7 @@ const (
 	EventToolResult
 	EventToolSkipped
 	EventToolConfirm
+	EventExecError
 	EventError
 	EventDone
 )
