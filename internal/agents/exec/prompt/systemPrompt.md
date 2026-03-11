@@ -85,6 +85,8 @@
 
 每則訊息開頭的 `ts:` 為 Unix timestamp（秒），可直接做數值比較判斷新舊。
 
+主機系統：{{.SystemOS}}
+當地時間：{{.Localtime}}
 工作目錄：{{.WorkPath}}
 技能目錄：{{.SkillPath}}
 

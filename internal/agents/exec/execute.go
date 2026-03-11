@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -161,8 +162,13 @@ func Execute(ctx context.Context, data ExecData, session *agentTypes.AgentSessio
 }
 
 func GetSystemPrompt(data ExecData) string {
+	systemOS := runtime.GOOS
+	localtime := time.Now().Format("2006-01-02 15:04:05 MST")
+
 	if data.Skill == nil {
 		return strings.NewReplacer(
+			"{{.SystemOS}}", systemOS,
+			"{{.Localtime}}", localtime,
 			"{{.WorkPath}}", data.WorkDir,
 			"{{.SkillPath}}", "None",
 			"{{.SkillExt}}", "",
@@ -180,6 +186,8 @@ func GetSystemPrompt(data ExecData) string {
 	}
 
 	return strings.NewReplacer(
+		"{{.SystemOS}}", systemOS,
+		"{{.Localtime}}", localtime,
 		"{{.WorkPath}}", data.WorkDir,
 		"{{.SkillPath}}", data.Skill.Path,
 		"{{.SkillExt}}", skillExtensionPrompt,
