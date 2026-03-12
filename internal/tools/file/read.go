@@ -9,11 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pardnchiu/agenvoy/configs"
 	toolTypes "github.com/pardnchiu/agenvoy/internal/tools/types"
 )
-
-//go:embed embed/denied.json
-var deniedJson []byte
 
 type deniedConfig struct {
 	Dirs       []string `json:"dirs"`
@@ -24,7 +22,7 @@ type deniedConfig struct {
 
 var DeniedConfig = func() deniedConfig {
 	var cfg deniedConfig
-	if err := json.Unmarshal(deniedJson, &cfg); err != nil {
+	if err := json.Unmarshal(configs.DeniedMap, &cfg); err != nil {
 		slog.Warn("json.Unmarshal securityDenied.json",
 			slog.String("error", err.Error()))
 	}

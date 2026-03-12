@@ -22,7 +22,7 @@ func write(e *toolTypes.Executor, path, content string) (string, error) {
 	}
 
 	if err := filesystem.WriteFile(fullPath, content, 0644); err != nil {
-		return "", fmt.Errorf("utils.WriteFile: %w", path, err)
+		return "", fmt.Errorf("utils.WriteFile: %w", err)
 	}
 
 	return fmt.Sprintf("Successfully wrote file: %s", path), nil

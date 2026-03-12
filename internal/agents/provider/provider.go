@@ -3,22 +3,9 @@ package provider
 import (
 	_ "embed"
 	"encoding/json"
+
+	"github.com/pardnchiu/agenvoy/configs"
 )
-
-//go:embed embed/claude.json
-var claudeJosn []byte
-
-//go:embed embed/copilot.json
-var copilotJson []byte
-
-//go:embed embed/gemini.json
-var geminiJson []byte
-
-//go:embed embed/nvidia.json
-var nvidiaJson []byte
-
-//go:embed embed/openai.json
-var openaiJson []byte
 
 type ProviderItem struct {
 	Default string               `json:"default"`
@@ -38,22 +25,22 @@ func parse(data []byte) ProviderItem {
 	return cfg
 }
 
-func configs() map[string]ProviderItem {
+func providers() map[string]ProviderItem {
 	return map[string]ProviderItem{
-		"claude":  parse(claudeJosn),
-		"copilot": parse(copilotJson),
-		"gemini":  parse(geminiJson),
-		"nvidia":  parse(nvidiaJson),
-		"openai":  parse(openaiJson),
+		"claude":  parse(configs.ClaudeModels),
+		"copilot": parse(configs.CopilotModels),
+		"gemini":  parse(configs.GeminiModels),
+		"nvidia":  parse(configs.NvidiaModels),
+		"openai":  parse(configs.OpenaiModels),
 	}
 }
 
 func Default(provider string) string {
-	return configs()[provider].Default
+	return providers()[provider].Default
 }
 
 func Get(provider, model string) ModelItem {
-	cfg, exist := configs()[provider]
+	cfg, exist := providers()[provider]
 	if !exist {
 		return ModelItem{Input: 128000, Output: 16384}
 	}
@@ -69,7 +56,7 @@ func Get(provider, model string) ModelItem {
 }
 
 func Models(provider string) map[string]ModelItem {
-	cfg, exist := configs()[provider]
+	cfg, exist := providers()[provider]
 	if !exist {
 		return nil
 	}

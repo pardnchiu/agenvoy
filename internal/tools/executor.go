@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pardnchiu/agenvoy/configs"
 	"github.com/pardnchiu/agenvoy/extensions"
 	"github.com/pardnchiu/agenvoy/internal/tools/apiAdapter"
 	"github.com/pardnchiu/agenvoy/internal/tools/apis"
 	"github.com/pardnchiu/agenvoy/internal/tools/apis/searchWeb"
 	"github.com/pardnchiu/agenvoy/internal/tools/browser"
 	"github.com/pardnchiu/agenvoy/internal/tools/calculator"
+	"github.com/pardnchiu/agenvoy/internal/tools/cron"
 	"github.com/pardnchiu/agenvoy/internal/tools/file"
 	toolTypes "github.com/pardnchiu/agenvoy/internal/tools/types"
 	"github.com/pardnchiu/agenvoy/internal/utils"
@@ -21,9 +23,6 @@ import (
 //go:embed embed/tools.json
 var toolsMap []byte
 
-//go:embed embed/commands.json
-var allowCommand []byte
-
 func NewExecutor(workPath, sessionID string) (*toolTypes.Executor, error) {
 	var tools []toolTypes.Tool
 	if err := json.Unmarshal(toolsMap, &tools); err != nil {
@@ -31,7 +30,7 @@ func NewExecutor(workPath, sessionID string) (*toolTypes.Executor, error) {
 	}
 
 	var commands []string
-	if err := json.Unmarshal(allowCommand, &commands); err != nil {
+	if err := json.Unmarshal(configs.WhiteList, &commands); err != nil {
 		return nil, fmt.Errorf("json.Unmarshal: %w", err)
 	}
 

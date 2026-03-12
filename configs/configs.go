@@ -4,17 +4,50 @@ import (
 	_ "embed"
 )
 
-//go:embed prompts/agentSelector.md
+// * Prompts
+
+//go:embed prompts/agent_selector.md
 var AgentSelector string
 
-//go:embed prompts/SkillSelector.md
+//go:embed prompts/skill_selector.md
 var SkillSelector string
 
-//go:embed prompts/skillExecution.md
+//go:embed prompts/skill_execution.md
 var SkillExecution string
 
-//go:embed prompts/summaryPrompt.md
+//go:embed prompts/summary_prompt.md
 var SummaryPrompt string
 
-//go:embed prompts/systemPrompt.md
+//go:embed prompts/system_prompt.md
 var SystemPrompt string
+
+//go:embed prompts/discord_system_prompt.md
+var DiscordSystemPrompt string
+
+// * Configs
+
+//go:embed jsons/denied_map.json
+var DeniedMap []byte
+
+//go:embed jsons/exclude_list.json
+var ExcludeList []byte
+
+//go:embed jsons/white_list.json
+var WhiteList []byte
+
+// * Providers
+
+//go:embed jsons/providors/claude.json
+var ClaudeModels []byte
+
+//go:embed jsons/providors/copilot.json
+var CopilotModels []byte
+
+//go:embed jsons/providors/gemini.json
+var GeminiModels []byte
+
+//go:embed jsons/providors/nvidia.json
+var NvidiaModels []byte
+
+//go:embed jsons/providors/openai.json
+var OpenaiModels []byte

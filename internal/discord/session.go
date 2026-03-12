@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pardnchiu/agenvoy/configs"
 	"github.com/pardnchiu/agenvoy/internal/agents/exec"
 	agentTypes "github.com/pardnchiu/agenvoy/internal/agents/types"
 	discordTypes "github.com/pardnchiu/agenvoy/internal/discord/types"
@@ -23,12 +24,6 @@ import (
 )
 
 const MaxHistoryMessages = 16
-
-//go:embed embed/systemPrompt.md
-var dcSystemPrompt string
-
-//go:embed embed/summaryPrompt.md
-var dcSummaryPrompt string
 
 func getSession(ctx context.Context, guildID, channelID, userID, input string, imageInputs []string, fileInputs []discordTypes.FileInput, data exec.ExecData) (*agentTypes.AgentSession, error) {
 	sid := getSessionID(guildID, channelID, userID)
@@ -48,7 +43,7 @@ func getSession(ctx context.Context, guildID, channelID, userID, input string, i
 		Tools: []agentTypes.Message{},
 		Messages: []agentTypes.Message{
 			{Role: "system", Content: exec.GetSystemPrompt(data)},
-			{Role: "system", Content: dcSystemPrompt},
+			{Role: "system", Content: configs.DiscordSystemPrompt},
 		},
 		Histories: []agentTypes.Message{},
 	}
@@ -69,7 +64,7 @@ func getSession(ctx context.Context, guildID, channelID, userID, input string, i
 	if summaryData, err := os.ReadFile(summaryPath); err == nil {
 		summary := strings.NewReplacer(
 			"{{.Summary}}", string(summaryData),
-		).Replace(strings.TrimSpace(dcSummaryPrompt))
+		).Replace(strings.TrimSpace(configs.SummaryPrompt))
 		session.Messages = append(session.Messages, agentTypes.Message{
 			Role:    "system",
 			Content: summary,

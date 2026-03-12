@@ -66,9 +66,9 @@ func Execute(ctx context.Context, data ExecData, session *agentTypes.AgentSessio
 		if err != nil {
 			slog.Warn("data.Agent.Send",
 				slog.String("error", err.Error()))
-			events <- agentTypes.Event{Type: agentTypes.EventText, Text: "服務暫時無法使用，請稍後再試。"}
-			events <- agentTypes.Event{Type: agentTypes.EventDone}
-			return nil
+			// events <- agentTypes.Event{Type: agentTypes.EventText, Text: "服務暫時無法使用，請稍後再試。"}
+			// events <- agentTypes.Event{Type: agentTypes.EventDone}
+			continue
 		}
 
 		if len(resp.Choices) == 0 {
