@@ -2,13 +2,10 @@ package exec
 
 import (
 	"encoding/json"
-	"log/slog"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 
-	"github.com/pardnchiu/agenvoy/internal/filesystem"
+	"github.com/pardnchiu/agenvoy/internal/filesystem/sessionManager"
 )
 
 var (
@@ -75,26 +72,14 @@ func extractSummary(sessionID, value string) string {
 	}
 
 	if jsonData != nil {
-		path := filepath.Join(filesystem.SessionsDir, sessionID, "summary.json")
-
 		if newMap, ok := jsonData.(map[string]any); ok {
-			if existing, err := os.ReadFile(path); err == nil {
-				var oldMap map[string]any
-				if json.Unmarshal(existing, &oldMap) == nil {
-					newMap = mergeSummary(oldMap, newMap)
-				}
+			_, oldMap := sessionManager.GetSummary(sessionID)
+			if oldMap != nil {
+				newMap = mergeSummary(oldMap, newMap)
 			}
 			jsonData = newMap
 		}
-
-		data, err := json.Marshal(jsonData)
-		if err == nil {
-			err := filesystem.WriteFile(path, string(data), 0644)
-			if err != nil {
-				slog.Warn("utils.WriteFile",
-					slog.String("error", err.Error()))
-			}
-		}
+		sessionManager.SaveSummary(sessionID, jsonData)
 	}
 	return cleaned
 }

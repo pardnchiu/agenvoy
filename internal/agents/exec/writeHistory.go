@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	agentTypes "github.com/pardnchiu/agenvoy/internal/agents/types"
-	"github.com/pardnchiu/agenvoy/internal/filesystem"
+	"github.com/pardnchiu/agenvoy/internal/filesystem/sessionManager"
 )
 
 func writeHistory(choice agentTypes.OutputChoices, session *agentTypes.AgentSession) error {
@@ -29,21 +29,9 @@ func writeHistory(choice agentTypes.OutputChoices, session *agentTypes.AgentSess
 		return fmt.Errorf("json.Marshal: %w", err)
 	}
 
-	err = filesystem.SaveHistory(session.ID, string(historyData))
+	err = sessionManager.SaveHistory(session.ID, string(historyData))
 	if err != nil {
-		return fmt.Errorf("filesystem.SaveHistory: %w", err)
+		return fmt.Errorf("sessionManager.SaveHistory: %w", err)
 	}
 	return nil
-	// sessionDir := filepath.Join(filesystem.SessionsDir, session.ID)
-	// if err := os.MkdirAll(sessionDir, 0755); err != nil {
-	// 	return fmt.Errorf("os.MkdirAll: %w", err)
-	// }
-	// historyPath := filepath.Join(sessionDir, "history.json")
-	// if err != nil {
-	// 	return fmt.Errorf("json.Marshal: %w", err)
-	// }
-	// if err := filesystem.WriteFile(historyPath, string(historyData), 0644); err != nil {
-	// 	return fmt.Errorf("utils.WriteFile: %w", err)
-	// }
-	// return nil
 }

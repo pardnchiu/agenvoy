@@ -18,13 +18,13 @@ import (
 	"github.com/pardnchiu/agenvoy/internal/agents/exec"
 	agentTypes "github.com/pardnchiu/agenvoy/internal/agents/types"
 	discordTypes "github.com/pardnchiu/agenvoy/internal/discord/types"
-	"github.com/pardnchiu/agenvoy/internal/filesystem"
+	"github.com/pardnchiu/agenvoy/internal/filesystem/sessionManager"
 )
 
-const MaxHistoryMessages = 16
+// const MaxHistoryMessages = 16
 
 func getSession(ctx context.Context, guildID, channelID, userID, input string, imageInputs []string, fileInputs []discordTypes.FileInput, data exec.ExecData) (*agentTypes.AgentSession, error) {
-	sessionID, err := filesystem.GetDiscordSessionID(guildID, channelID, userID)
+	sessionID, err := sessionManager.GetDiscordSession(guildID, channelID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("filesystem.GetDiscordSessionID: %w", err)
 	}
@@ -61,7 +61,7 @@ func getSession(ctx context.Context, guildID, channelID, userID, input string, i
 		Histories: []agentTypes.Message{},
 	}
 
-	oldHistory := exec.BytesToHistory(sessionID)
+	oldHistory := sessionManager.GetHistory(sessionID)
 	session.Histories = oldHistory
 	session.Messages = append(session.Messages, oldHistory...)
 	// historyPath := filepath.Join(sessionDir, "history.json")
@@ -76,7 +76,7 @@ func getSession(ctx context.Context, guildID, channelID, userID, input string, i
 	// 	session.Messages = append(session.Messages, oldHistory...)
 	// }
 	//
-	if summary := filesystem.GetSummary(sessionID); summary != "" {
+	if summary := sessionManager.GetSummaryPrompt(sessionID); summary != "" {
 		session.Messages = append(session.Messages, agentTypes.Message{
 			Role:    "system",
 			Content: summary,

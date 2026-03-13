@@ -14,7 +14,7 @@ import (
 
 	"github.com/pardnchiu/agenvoy/configs"
 	agentTypes "github.com/pardnchiu/agenvoy/internal/agents/types"
-	"github.com/pardnchiu/agenvoy/internal/filesystem"
+	"github.com/pardnchiu/agenvoy/internal/filesystem/sessionManager"
 	"github.com/pardnchiu/agenvoy/internal/skill"
 	"github.com/pardnchiu/agenvoy/internal/tools"
 )
@@ -124,7 +124,7 @@ func Execute(ctx context.Context, data ExecData, session *agentTypes.AgentSessio
 
 		if len(session.Tools) > 0 {
 			if data, err := json.Marshal(session.Tools); err == nil {
-				filesystem.SaveToToolCall(session.ID, string(data))
+				sessionManager.SaveToToolCall(session.ID, string(data))
 			}
 		}
 		return nil
