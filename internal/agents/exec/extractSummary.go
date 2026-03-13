@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 var (
@@ -29,7 +28,7 @@ func isSummaryJSON(m map[string]any) bool {
 	return matched >= 2
 }
 
-func extractSummary(configDir *utils.ConfigDirData, sessionID, value string) string {
+func extractSummary(sessionID, value string) string {
 	const summaryStart = "<!--SUMMARY_START-->"
 	const summaryEnd = "<!--SUMMARY_END-->"
 
@@ -62,7 +61,7 @@ func extractSummary(configDir *utils.ConfigDirData, sessionID, value string) str
 	}
 
 	if jsonData != nil {
-		path := filepath.Join(configDir.Home, sessionID, "summary.json")
+		path := filepath.Join(filesystem.SessionsDir, sessionID, "summary.json")
 
 		if newMap, ok := jsonData.(map[string]any); ok {
 			if existing, err := os.ReadFile(path); err == nil {

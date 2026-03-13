@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 type ToolError struct {
@@ -25,10 +24,10 @@ func SaveToolError(sessionID, toolName, args, errMsg string) string {
 	h := sha256.Sum256([]byte(raw))
 	hash := hex.EncodeToString(h[:])[:8]
 
-	configDir, err := utils.GetConfigDir("sessions")
-	if err != nil {
-		return hash
-	}
+	// configDir, err := utils.GetConfigDir("sessions")
+	// if err != nil {
+	// 	return hash
+	// }
 
 	record := ToolError{
 		Hash:      hash,
@@ -42,7 +41,7 @@ func SaveToolError(sessionID, toolName, args, errMsg string) string {
 		return hash
 	}
 
-	dir := filepath.Join(configDir.Home, sessionID, "tool_errors")
+	dir := filepath.Join(filesystem.SessionsDir, sessionID, "tool_errors")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return hash
 	}
@@ -51,12 +50,12 @@ func SaveToolError(sessionID, toolName, args, errMsg string) string {
 }
 
 func GetToolError(sessionID, hash string) string {
-	configDir, err := utils.GetConfigDir("sessions")
-	if err != nil {
-		return ""
-	}
+	// configDir, err := utils.GetConfigDir("sessions")
+	// if err != nil {
+	// 	return ""
+	// }
 
-	path := filepath.Join(configDir.Home, sessionID, "tool_errors", hash+".json")
+	path := filepath.Join(filesystem.SessionsDir, sessionID, "tool_errors", hash+".json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return ""

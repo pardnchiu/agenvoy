@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pardnchiu/agenvoy/internal/utils"
+	"github.com/pardnchiu/agenvoy/internal/filesystem"
 )
 
 type historyEntry struct {
@@ -49,12 +49,12 @@ func searchHistory(sessionID, keyword, timeRange string) (string, error) {
 		return "", fmt.Errorf("sessionID is required")
 	}
 
-	configDir, err := utils.GetConfigDir("sessions")
-	if err != nil {
-		return "", fmt.Errorf("utils.ConfigDir: %w", err)
-	}
+	// configDir, err := utils.GetConfigDir("sessions")
+	// if err != nil {
+	// 	return "", fmt.Errorf("utils.ConfigDir: %w", err)
+	// }
 
-	historyPath := filepath.Join(configDir.Home, sessionID, "history.json")
+	historyPath := filepath.Join(filesystem.SessionsDir, sessionID, "history.json")
 
 	data, err := os.ReadFile(historyPath)
 	if err != nil {

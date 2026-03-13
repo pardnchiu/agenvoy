@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/pardnchiu/agenvoy/internal/utils"
+	"github.com/pardnchiu/agenvoy/internal/filesystem"
 )
 
 const (
@@ -28,12 +28,12 @@ func SyncSkills(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	dir, err := utils.GetConfigDir("skills")
-	if err != nil {
-		slog.Error("utils.GetConfigDir",
-			slog.String("error", err.Error()))
-		return
-	}
+	// dir, err := utils.GetConfigDir("skills")
+	// if err != nil {
+	// 	slog.Error("utils.GetConfigDir",
+	// 		slog.String("error", err.Error()))
+	// 	return
+	// }
 
 	entries, err := listGitHub(ctx, apiGithubSkills)
 	if err != nil {
@@ -47,7 +47,7 @@ func SyncSkills(ctx context.Context) {
 			continue
 		}
 
-		path := filepath.Join(dir.Home, entry.Name)
+		path := filepath.Join(filesystem.SkillsDir, entry.Name)
 		if _, err := os.Stat(path); err == nil {
 			continue
 		}

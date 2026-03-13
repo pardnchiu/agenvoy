@@ -2,13 +2,15 @@ package tools
 
 import (
 	"context"
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
 
+	_ "embed"
+
 	"github.com/pardnchiu/agenvoy/configs"
 	"github.com/pardnchiu/agenvoy/extensions"
+	"github.com/pardnchiu/agenvoy/internal/filesystem"
 	"github.com/pardnchiu/agenvoy/internal/tools/apiAdapter"
 	"github.com/pardnchiu/agenvoy/internal/tools/apis"
 	"github.com/pardnchiu/agenvoy/internal/tools/apis/searchWeb"
@@ -17,7 +19,6 @@ import (
 	"github.com/pardnchiu/agenvoy/internal/tools/cron"
 	"github.com/pardnchiu/agenvoy/internal/tools/file"
 	toolTypes "github.com/pardnchiu/agenvoy/internal/tools/types"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 //go:embed embed/tools.json
@@ -42,9 +43,16 @@ func NewExecutor(workPath, sessionID string) (*toolTypes.Executor, error) {
 	apiToolbox := apiAdapter.New()
 	apiToolbox.LoadFS(extensions.APIs, "apis")
 
-	if configDir, err := utils.GetConfigDir("apis"); err == nil {
-		apiToolbox.Load(configDir.Home)
-		apiToolbox.Load(configDir.Work)
+	// if configDir, err := utils.GetConfigDir("apis"); err == nil {
+	// 	apiToolbox.Load(configDir.Home)
+	// 	apiToolbox.Load(configDir.Work)
+	// }
+	//
+	for _, dir := range []string{
+		filesystem.APIsDir,
+		filesystem.WorkAPIsDir,
+	} {
+		apiToolbox.Load(dir)
 	}
 
 	for _, tool := range apiToolbox.GetTools() {

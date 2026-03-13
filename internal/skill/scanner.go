@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/pardnchiu/agenvoy/internal/filesystem"
 )
 
 type SkillScanner struct {
@@ -47,7 +49,7 @@ func NewScanner() *SkillScanner {
 		filepath.Join(home, ".opencode", "skills"),
 		filepath.Join(home, ".openai", "skills"),
 		filepath.Join(home, ".codex", "skills"),
-		filepath.Join(home, ".config", "agenvoy", "skills"),
+		filesystem.SkillsDir,
 		"/mnt/skills/public",
 		"/mnt/skills/user",
 		"/mnt/skills/examples",

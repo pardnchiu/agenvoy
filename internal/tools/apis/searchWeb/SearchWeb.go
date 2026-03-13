@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 type ResultData struct {
@@ -58,36 +57,17 @@ func Search(ctx context.Context, query string, timeRange TimeRange) (string, err
 	hash := sha256.Sum256([]byte(query + "|" + string(timeRange)))
 	cacheKey := hex.EncodeToString(hash[:])
 
-	configDir, err := utils.GetConfigDir("tools", "search_web", "cached")
-	if err == nil {
-		cleanCache(configDir.Home, cacheExpiry)
-		cachePath := filepath.Join(configDir.Home, cacheKey+".json")
-		if info, err := os.Stat(cachePath); err == nil {
-			if time.Since(info.ModTime()) < cacheExpiry {
-				if cached, err := os.ReadFile(cachePath); err == nil {
-					return string(cached), nil
-				}
+	// configDir, err := utils.GetConfigDir("tools", "search_web", "cached")
+	cachedDir := filepath.Join(filesystem.ToolsDir, "search_web", "cached")
+	// if err == nil {
+	cleanCache(cachedDir, cacheExpiry)
+	cachePath := filepath.Join(cachedDir, cacheKey+".json")
+	if info, err := os.Stat(cachePath); err == nil {
+		if time.Since(info.ModTime()) < cacheExpiry {
+			if cached, err := os.ReadFile(cachePath); err == nil {
+				return string(cached), nil
 			}
 		}
-
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
-
-		results, err := fetchDDG(ctx, query, timeRange)
-		if err != nil {
-			return "", err
-		}
-
-		out, err := json.Marshal(results)
-		if err != nil {
-			return "", fmt.Errorf("json.Marshal: %w", err)
-		}
-
-		if err = filesystem.WriteFile(cachePath, string(out), 0644); err != nil {
-			slog.Warn("failed to write cache file",
-				slog.String("path", err.Error()))
-		}
-		return string(out), nil
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -97,11 +77,31 @@ func Search(ctx context.Context, query string, timeRange TimeRange) (string, err
 	if err != nil {
 		return "", err
 	}
+
 	out, err := json.Marshal(results)
 	if err != nil {
 		return "", fmt.Errorf("json.Marshal: %w", err)
 	}
+
+	if err = filesystem.WriteFile(cachePath, string(out), 0644); err != nil {
+		slog.Warn("failed to write cache file",
+			slog.String("path", err.Error()))
+	}
 	return string(out), nil
+	// }
+
+	// ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	// defer cancel()
+
+	// results, err := fetchDDG(ctx, query, timeRange)
+	// if err != nil {
+	// 	return "", err
+	// }
+	// out, err := json.Marshal(results)
+	// if err != nil {
+	// 	return "", fmt.Errorf("json.Marshal: %w", err)
+	// }
+	// return string(out), nil
 }
 
 func cleanCache(dir string, ttl time.Duration) {

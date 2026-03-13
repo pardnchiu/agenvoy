@@ -5,7 +5,60 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 )
+
+var (
+	once         sync.Once
+	AgenvoyDir   string
+	SessionsDir  string
+	APIsDir      string
+	ErrorsDir    string
+	SchedulerDir string
+	SkillsDir    string
+	ToolsDir     string
+
+	WorkAgenvoyDir string
+	WorkAPIsDir    string
+	WorkSkillsDir  string
+)
+
+const (
+	projectName = "agenvoy"
+)
+
+func Init() error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("os.UserHomeDir: %w", err)
+	}
+
+	workDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("os.Getwd: %w", err)
+	}
+
+	once.Do(func() {
+		AgenvoyDir = filepath.Join(homeDir, ".config", projectName)
+		SessionsDir = filepath.Join(AgenvoyDir, "sessions")
+		APIsDir = filepath.Join(AgenvoyDir, "apis")
+		ErrorsDir = filepath.Join(AgenvoyDir, "errors")
+		SchedulerDir = filepath.Join(AgenvoyDir, "scheduler")
+		SkillsDir = filepath.Join(AgenvoyDir, "skills")
+		ToolsDir = filepath.Join(AgenvoyDir, "tools")
+
+		WorkAgenvoyDir = filepath.Join(workDir, ".config", projectName)
+		WorkAPIsDir = filepath.Join(WorkAgenvoyDir, "apis")
+		WorkSkillsDir = filepath.Join(WorkAgenvoyDir, "skills")
+	})
+
+	err = os.MkdirAll(AgenvoyDir, 0755)
+	if err != nil {
+		return fmt.Errorf("os.MkdirAll: %w", err)
+	}
+
+	return nil
+}
 
 func ReadFile(path string) ([]string, error) {
 	file, err := os.Open(path)

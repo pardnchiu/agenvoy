@@ -177,6 +177,8 @@ From the project root (requires source clone):
 | `make add` | `go run ./cmd/cli/ add` | Interactively add a provider/model |
 | `make remove` | `go run ./cmd/cli/ remove` | Remove a configured provider |
 | `make planner` | `go run ./cmd/cli/ planner` | Set the planner model |
+| `make list` | `go run ./cmd/cli/ list` | List configured models |
+| `make skill-list` | `go run ./cmd/cli/ list skill` | List available skills |
 | `make cli <input...>` | `go run ./cmd/cli/ run <input>` | Run agent with tool confirmation |
 | `make run <input...>` | `go run ./cmd/cli/ run-allow <input>` | Run agent with all tools auto-approved |
 

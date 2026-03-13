@@ -177,6 +177,8 @@ description: 顯示給 Agent 選擇時的一行摘要
 | `make add` | `go run ./cmd/cli/ add` | 互動式新增 Provider／模型 |
 | `make remove` | `go run ./cmd/cli/ remove` | 移除已設定的 Provider |
 | `make planner` | `go run ./cmd/cli/ planner` | 設定 Planner 模型 |
+| `make list` | `go run ./cmd/cli/ list` | 列出已設定的模型 |
+| `make skill-list` | `go run ./cmd/cli/ list skill` | 列出可用的 Skill |
 | `make cli <input...>` | `go run ./cmd/cli/ run <input>` | 以確認模式執行 Agent |
 | `make run <input...>` | `go run ./cmd/cli/ run-allow <input>` | 自動批准所有 Tool Call 並執行 Agent |
 

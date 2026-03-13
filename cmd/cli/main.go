@@ -11,11 +11,20 @@ import (
 
 	"github.com/pardnchiu/agenvoy/internal/agents/exec"
 	agentTypes "github.com/pardnchiu/agenvoy/internal/agents/types"
+	"github.com/pardnchiu/agenvoy/internal/filesystem"
 	"github.com/pardnchiu/agenvoy/internal/keychain"
 	"github.com/pardnchiu/agenvoy/internal/skill"
 )
 
 func main() {
+	if err := filesystem.Init(); err != nil {
+		slog.Error("filesystem.Init",
+			slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
+	slog.Info(filesystem.SkillsDir)
+
 	if len(os.Args) < 2 {
 		fmt.Println("Usage:")
 		fmt.Println("  go run cmd/cli/main.go add")

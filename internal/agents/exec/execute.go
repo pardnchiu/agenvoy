@@ -17,7 +17,6 @@ import (
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
 	"github.com/pardnchiu/agenvoy/internal/skill"
 	"github.com/pardnchiu/agenvoy/internal/tools"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 const (
@@ -41,10 +40,10 @@ func Execute(ctx context.Context, data ExecData, session *agentTypes.AgentSessio
 		data.Skill = nil
 	}
 
-	configDir, err := utils.GetConfigDir("sessions")
-	if err != nil {
-		return fmt.Errorf("utils.ConfigDir: %w", err)
-	}
+	// configDir, err := utils.GetConfigDir("sessions")
+	// if err != nil {
+	// 	return fmt.Errorf("utils.ConfigDir: %w", err)
+	// }
 
 	exec, err := tools.NewExecutor(data.WorkDir, session.ID)
 	if err != nil {
@@ -59,9 +58,9 @@ func Execute(ctx context.Context, data ExecData, session *agentTypes.AgentSessio
 	alreadyCall := make(map[string]string)
 	emptyCount := 0
 	for i := 0; i < limit; i++ {
-		if i > 0 {
-			time.Sleep(500 * time.Millisecond)
-		}
+		// if i > 0 {
+		// 	time.Sleep(500 * time.Millisecond)
+		// }
 		resp, err := data.Agent.Send(ctx, session.Messages, exec.Tools)
 		if err != nil {
 			slog.Warn("data.Agent.Send",
@@ -97,7 +96,7 @@ func Execute(ctx context.Context, data ExecData, session *agentTypes.AgentSessio
 			if text == "" {
 				text = "工具無法取得資料，請稍後再試或改用其他方式查詢。"
 			}
-			cleaned := extractSummary(configDir, session.ID, text)
+			cleaned := extractSummary(session.ID, text)
 
 			events <- agentTypes.Event{Type: agentTypes.EventText, Text: cleaned}
 
@@ -105,7 +104,7 @@ func Execute(ctx context.Context, data ExecData, session *agentTypes.AgentSessio
 
 			session.Messages = append(session.Messages, choice.Message)
 
-			err := writeHistory(choice, configDir, session)
+			err := writeHistory(choice, session)
 			if err != nil {
 				slog.Warn("Failed to write history",
 					slog.String("error", err.Error()))
@@ -122,7 +121,7 @@ func Execute(ctx context.Context, data ExecData, session *agentTypes.AgentSessio
 			now := time.Now()
 			date := now.Format("2006-01-02")
 			dateWithSec := now.Format("2006-01-02-15-04-05")
-			toolActionsDir := filepath.Join(configDir.Home, session.ID, "tool_calls", date)
+			toolActionsDir := filepath.Join(filesystem.SessionsDir, session.ID, "tool_calls", date)
 			if err := os.MkdirAll(toolActionsDir, 0755); err == nil {
 				filename := dateWithSec + ".json"
 				toolActionsPath := filepath.Join(toolActionsDir, filename)
@@ -145,7 +144,7 @@ func Execute(ctx context.Context, data ExecData, session *agentTypes.AgentSessio
 	resp, err := data.Agent.Send(ctx, summaryMessages, nil)
 	if err == nil && len(resp.Choices) > 0 {
 		if text, ok := resp.Choices[0].Message.Content.(string); ok && text != "" {
-			cleaned := extractSummary(configDir, session.ID, text)
+			cleaned := extractSummary(session.ID, text)
 			events <- agentTypes.Event{Type: agentTypes.EventText, Text: cleaned}
 			events <- agentTypes.Event{Type: agentTypes.EventDone}
 			return nil

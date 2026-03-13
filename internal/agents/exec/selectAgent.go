@@ -11,16 +11,19 @@ import (
 
 	"github.com/pardnchiu/agenvoy/configs"
 	agentTypes "github.com/pardnchiu/agenvoy/internal/agents/types"
-	"github.com/pardnchiu/agenvoy/internal/utils"
+	"github.com/pardnchiu/agenvoy/internal/filesystem"
 )
 
 func GetAgentEntries() []agentTypes.AgentEntry {
-	configDir, err := utils.GetConfigDir()
-	if err != nil {
-		return []agentTypes.AgentEntry{}
-	}
+	// configDir, err := utils.GetConfigDir()
+	// if err != nil {
+	// 	return []agentTypes.AgentEntry{}
+	// }
 
-	for _, dir := range configDir.Dirs {
+	for _, dir := range []string{
+		filesystem.AgenvoyDir,
+		filesystem.WorkAgenvoyDir,
+	} {
 		data, err := os.ReadFile(filepath.Join(dir, "config.json"))
 		if err != nil {
 			continue

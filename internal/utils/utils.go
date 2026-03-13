@@ -8,8 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"unicode/utf8"
 )
@@ -138,45 +136,4 @@ func POST[T any](ctx context.Context, client *http.Client, api string, header ma
 		return result, statusCode, fmt.Errorf("failed to read: %w", err)
 	}
 	return result, statusCode, nil
-}
-
-const (
-	projectName = "agenvoy"
-)
-
-type ConfigDirData struct {
-	Home string
-	Work string
-	Dirs []string
-}
-
-func GetConfigDir(path ...string) (*ConfigDirData, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("os.UserHomeDir: %w", err)
-	}
-
-	workDir, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("os.Getwd: %w", err)
-	}
-
-	homeDir = strings.TrimSpace(filepath.Join(append([]string{homeDir, ".config", projectName}, path...)...))
-	workDir = strings.TrimSpace(filepath.Join(append([]string{workDir, ".config", projectName}, path...)...))
-
-	config := &ConfigDirData{
-		Home: homeDir,
-		Work: workDir,
-		Dirs: []string{
-			homeDir,
-			workDir,
-		},
-	}
-
-	err = os.MkdirAll(config.Home, 0755)
-	if err != nil {
-		return nil, fmt.Errorf("os.MkdirAll: %w", err)
-	}
-
-	return config, nil
 }

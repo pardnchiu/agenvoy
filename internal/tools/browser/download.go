@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 func Download(href, saveTo string) (string, error) {
@@ -25,9 +24,11 @@ func Download(href, saveTo string) (string, error) {
 		return "", fmt.Errorf("saveTo is required")
 	}
 
-	if dir, err := utils.GetConfigDir("tools", "browser", "5xx"); err == nil {
-		clean(dir.Home, skippedExpired)
-	}
+	// if dir, err := utils.GetConfigDir("tools", "browser", "5xx"); err == nil {
+	// 	clean(dir.Home, skippedExpired)
+	// }
+	cached5xxDir := filepath.Join(filesystem.ToolsDir, "browser", "5xx")
+	clean(cached5xxDir, skippedExpired)
 
 	if isSkipped(href) {
 		return skippedMessage(href), nil
@@ -35,13 +36,14 @@ func Download(href, saveTo string) (string, error) {
 
 	hash := sha256.Sum256([]byte(href + "|download"))
 	cacheKey := hex.EncodeToString(hash[:])
-	configDir, err := utils.GetConfigDir("tools", "browser", "cached")
-	if err != nil {
-		return "", fmt.Errorf("utils.GetConfigDir: %w", err)
-	}
+	// configDir, err := utils.GetConfigDir("tools", "browser", "cached")
+	// if err != nil {
+	// 	return "", fmt.Errorf("utils.GetConfigDir: %w", err)
+	// }
+	cached := filepath.Join(filesystem.ToolsDir, "browser", "cached")
 
-	clean(configDir.Home, cacheExpired)
-	cachePath := filepath.Join(configDir.Home, cacheKey+".md")
+	clean(cached, cacheExpired)
+	cachePath := filepath.Join(cached, cacheKey+".md")
 	var content string
 	if _, err := os.Stat(cachePath); err == nil {
 		if cached, err := os.ReadFile(cachePath); err == nil {

@@ -17,7 +17,6 @@ import (
 	"github.com/pardnchiu/agenvoy/configs"
 	agentTypes "github.com/pardnchiu/agenvoy/internal/agents/types"
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 const (
@@ -79,12 +78,12 @@ func GetSession(execData ExecData) (*agentTypes.AgentSession, error) {
 		Histories: []agentTypes.Message{},
 	}
 
-	configDir, err := utils.GetConfigDir("sessions")
-	if err != nil {
-		return nil, fmt.Errorf("utils.ConfigDir: %v\n", err)
-	}
+	// configDir, err := utils.GetConfigDir("sessions")
+	// if err != nil {
+	// 	return nil, fmt.Errorf("utils.ConfigDir: %v\n", err)
+	// }
 
-	indexJsonPath := filepath.Join(configDir.Home, "..", "config.json")
+	indexJsonPath := filepath.Join(filesystem.AgenvoyDir, "config.json")
 	unlock, err := lockConfig(filepath.Dir(indexJsonPath))
 	if err != nil {
 		return nil, fmt.Errorf("lockConfig: %w", err)
@@ -125,13 +124,13 @@ func GetSession(execData ExecData) (*agentTypes.AgentSession, error) {
 		sessionID = strings.TrimSpace(indexData.SessionID)
 
 		var summary string
-		if summaryData, err := os.ReadFile(filepath.Join(configDir.Home, sessionID, "summary.json")); err == nil {
+		if summaryData, err := os.ReadFile(filepath.Join(filesystem.SessionsDir, sessionID, "summary.json")); err == nil {
 			summary = strings.NewReplacer(
 				"{{.Summary}}", string(summaryData),
 			).Replace(strings.TrimSpace(configs.SummaryPrompt))
 		}
 
-		if historyData, err := os.ReadFile(filepath.Join(configDir.Home, sessionID, "history.json")); err == nil {
+		if historyData, err := os.ReadFile(filepath.Join(filesystem.SessionsDir, sessionID, "history.json")); err == nil {
 			// * for ensuring context relevance
 			var oldHistory []agentTypes.Message
 			if err := json.Unmarshal(historyData, &oldHistory); err == nil {
@@ -202,7 +201,7 @@ func GetSession(execData ExecData) (*agentTypes.AgentSession, error) {
 		return nil, fmt.Errorf("os.ReadFile: %w", configErr)
 	}
 
-	err = os.MkdirAll(filepath.Join(configDir.Home, sessionID), 0755)
+	err = os.MkdirAll(filepath.Join(filesystem.SessionsDir, sessionID), 0755)
 	if err != nil {
 		return nil, fmt.Errorf("os.MkdirAll: %w", err)
 	}

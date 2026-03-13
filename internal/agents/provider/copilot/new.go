@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/pardnchiu/agenvoy/internal/agents/provider"
-	"github.com/pardnchiu/agenvoy/internal/utils"
+	"github.com/pardnchiu/agenvoy/internal/filesystem"
 )
 
 type Token struct {
@@ -46,16 +46,16 @@ func New(model ...string) (*Agent, error) {
 		return nil, fmt.Errorf("os.Getwd: %w", err)
 	}
 
-	configDir, err := utils.GetConfigDir()
-	if err != nil {
-		return nil, fmt.Errorf("utils.ConfigDir(: %w", err)
-	}
+	// configDir, err := utils.GetConfigDir()
+	// if err != nil {
+	// 	return nil, fmt.Errorf("utils.ConfigDir(: %w", err)
+	// }
 
 	agent := &Agent{
 		httpClient: &http.Client{Timeout: 2 * time.Minute},
 		model:      usedModel,
 		workDir:    workDir,
-		tokenDir:   filepath.Join(configDir.Home, "copilot_token.json"),
+		tokenDir:   filepath.Join(filesystem.AgenvoyDir, "copilot_token.json"),
 	}
 
 	var token *Token

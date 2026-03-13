@@ -6,6 +6,8 @@ help:
 	@echo "  make add                Add a provider/model"
 	@echo "  make remove             Remove a provider/model"
 	@echo "  make planner            Set planner model"
+	@echo "  make list               Get model list"
+	@echo "  make skill-list         Get skill list"
 	@echo "  make cli <input...>     Run agent (requires tool confirmation)"
 	@echo "  make run <input...>     Run agent (allow all tools)"
 
@@ -20,6 +22,12 @@ remove:
 
 planner:
 	@go run ./cmd/cli/ planner
+
+list:
+	@go run ./cmd/cli/ list
+
+skill-list:
+	@go run ./cmd/cli/ list skill
 
 cli:
 	@go run ./cmd/cli/ run $(filter-out $@,$(MAKECMDGOALS))

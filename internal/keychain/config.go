@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 type CompatEntry struct {
@@ -29,12 +28,12 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-	configData, err := utils.GetConfigDir()
-	if err != nil {
-		return nil, fmt.Errorf("utils.GetConfigDir: %w", err)
-	}
+	// configData, err := utils.GetConfigDir()
+	// if err != nil {
+	// 	return nil, fmt.Errorf("utils.GetConfigDir: %w", err)
+	// }
 
-	configPath := filepath.Join(configData.Home, "config.json")
+	configPath := filepath.Join(filesystem.AgenvoyDir, "config.json")
 	data, err := os.ReadFile(configPath)
 	if os.IsNotExist(err) {
 		return &Config{}, nil
@@ -50,12 +49,12 @@ func Load() (*Config, error) {
 }
 
 func Save(cfg *Config) error {
-	configData, err := utils.GetConfigDir()
-	if err != nil {
-		return fmt.Errorf("utils.GetConfigDir: %w", err)
-	}
+	// configData, err := utils.GetConfigDir()
+	// if err != nil {
+	// 	return fmt.Errorf("utils.GetConfigDir: %w", err)
+	// }
 
-	configPath := filepath.Join(configData.Home, "config.json")
+	configPath := filepath.Join(filesystem.AgenvoyDir, "config.json")
 	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
 		return fmt.Errorf("os.MkdirAll: %w", err)
 	}

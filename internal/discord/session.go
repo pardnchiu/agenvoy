@@ -20,7 +20,7 @@ import (
 	"github.com/pardnchiu/agenvoy/internal/agents/exec"
 	agentTypes "github.com/pardnchiu/agenvoy/internal/agents/types"
 	discordTypes "github.com/pardnchiu/agenvoy/internal/discord/types"
-	"github.com/pardnchiu/agenvoy/internal/utils"
+	"github.com/pardnchiu/agenvoy/internal/filesystem"
 )
 
 const MaxHistoryMessages = 16
@@ -28,12 +28,12 @@ const MaxHistoryMessages = 16
 func getSession(ctx context.Context, guildID, channelID, userID, input string, imageInputs []string, fileInputs []discordTypes.FileInput, data exec.ExecData) (*agentTypes.AgentSession, error) {
 	sid := getSessionID(guildID, channelID, userID)
 
-	configDir, err := utils.GetConfigDir("sessions")
-	if err != nil {
-		return nil, fmt.Errorf("utils.GetConfigDir: %w", err)
-	}
+	// configDir, err := utils.GetConfigDir("sessions")
+	// if err != nil {
+	// 	return nil, fmt.Errorf("utils.GetConfigDir: %w", err)
+	// }
 
-	sessionDir := filepath.Join(configDir.Home, sid)
+	sessionDir := filepath.Join(filesystem.SessionsDir, sid)
 	if err := os.MkdirAll(sessionDir, 0755); err != nil {
 		return nil, fmt.Errorf("os.MkdirAll: %w", err)
 	}

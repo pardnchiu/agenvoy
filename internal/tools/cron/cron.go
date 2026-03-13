@@ -9,7 +9,6 @@ import (
 
 	"github.com/pardnchiu/agenvoy/internal/cron"
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 // * allow: +5m, +1h30m, 15:04, 2006-01-02 15:04, RFC3339
@@ -78,12 +77,12 @@ func WriteScript(name, content string) (string, error) {
 		return "", fmt.Errorf("must not contain path separator")
 	}
 
-	configDir, err := utils.GetConfigDir("scheduler")
-	if err != nil {
-		return "", fmt.Errorf("utils.GetConfigDir: %w", err)
-	}
+	// configDir, err := utils.GetConfigDir("scheduler")
+	// if err != nil {
+	// 	return "", fmt.Errorf("utils.GetConfigDir: %w", err)
+	// }
 
-	scriptsDir := filepath.Join(configDir.Home, "scripts")
+	scriptsDir := filepath.Join(filesystem.SchedulerDir, "scripts")
 	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
 		return "", fmt.Errorf("os.MkdirAll: %w", err)
 	}

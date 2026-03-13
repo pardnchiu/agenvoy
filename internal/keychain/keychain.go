@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 func Get(key string) string {
@@ -81,12 +80,12 @@ func getSecretFromMac(key string) string {
 }
 
 func setFallback(key, value string) error {
-	configData, err := utils.GetConfigDir()
-	if err != nil {
-		return fmt.Errorf("utils.GetConfigDir: %w", err)
-	}
+	// configData, err := utils.GetConfigDir()
+	// if err != nil {
+	// 	return fmt.Errorf("utils.GetConfigDir: %w", err)
+	// }
 
-	path := filepath.Join(configData.Home, ".secrets")
+	path := filepath.Join(filesystem.AgenvoyDir, ".secrets")
 	lines := readFallbackLines()
 	prefix := key + "="
 	found := false
@@ -118,12 +117,12 @@ func getFallback(key string) string {
 }
 
 func readFallbackLines() []string {
-	configData, err := utils.GetConfigDir()
-	if err != nil {
-		return nil
-	}
+	// configData, err := utils.GetConfigDir()
+	// if err != nil {
+	// 	return nil
+	// }
 
-	path := filepath.Join(configData.Home, ".secrets")
+	path := filepath.Join(filesystem.AgenvoyDir, ".secrets")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil

@@ -8,10 +8,9 @@ import (
 
 	agentTypes "github.com/pardnchiu/agenvoy/internal/agents/types"
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
-func writeHistory(choice agentTypes.OutputChoices, configDir *utils.ConfigDirData, session *agentTypes.AgentSession) error {
+func writeHistory(choice agentTypes.OutputChoices, session *agentTypes.AgentSession) error {
 	session.Histories = append(session.Histories, choice.Message)
 
 	filtered := make([]agentTypes.Message, 0, len(session.Histories))
@@ -28,7 +27,7 @@ func writeHistory(choice agentTypes.OutputChoices, configDir *utils.ConfigDirDat
 		filtered = append(filtered, m)
 	}
 
-	sessionDir := filepath.Join(configDir.Home, session.ID)
+	sessionDir := filepath.Join(filesystem.SessionsDir, session.ID)
 	if err := os.MkdirAll(sessionDir, 0755); err != nil {
 		return fmt.Errorf("os.MkdirAll: %w", err)
 	}

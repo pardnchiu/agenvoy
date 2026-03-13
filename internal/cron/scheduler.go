@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 var scheduler *Scheduler
@@ -41,19 +40,19 @@ type taskItem struct {
 
 func New() error {
 	// * ~/.config/agenvoy/scheduler
-	schedulerDir, err := utils.GetConfigDir("scheduler")
-	if err != nil {
-		return fmt.Errorf("utils.GetConfigDir: %w", err)
-	}
+	// schedulerDir, err := utils.GetConfigDir("scheduler")
+	// if err != nil {
+	// 	return fmt.Errorf("utils.GetConfigDir: %w", err)
+	// }
 
 	// * ~/.config/agenvoy/scheduler/scripts
-	scriptsDir := filepath.Join(schedulerDir.Home, "scripts")
+	scriptsDir := filepath.Join(filesystem.SchedulerDir, "scripts")
 	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
 		return fmt.Errorf("os.MkdirAll: %w", err)
 	}
 
 	scheduler = &Scheduler{
-		schedulerDir: schedulerDir.Home,
+		schedulerDir: filesystem.SchedulerDir,
 		scriptsDir:   scriptsDir,
 		timers:       make(map[string]*time.Timer),
 	}

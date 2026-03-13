@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 func isSkipped(href string) bool {
@@ -25,13 +24,14 @@ func isSkipped(href string) bool {
 }
 
 func skippedPath(folder, href string) (string, string, error) {
-	configDir, err := utils.GetConfigDir("tools", "browser", folder)
-	if err != nil {
-		return "", "", err
-	}
+	cached := filepath.Join(filesystem.ToolsDir, "browser", folder)
+	// configDir, err := utils.GetConfigDir("tools", "browser", folder)
+	// if err != nil {
+	// 	return "", "", err
+	// }
 	hash := sha256.Sum256([]byte(href))
 	name := hex.EncodeToString(hash[:])
-	return configDir.Home, filepath.Join(configDir.Home, name), nil
+	return cached, filepath.Join(cached, name), nil
 }
 
 func addToSkippedMap(href string, status int) {

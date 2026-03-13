@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 type ErrorMemory struct {
@@ -43,12 +42,12 @@ func SearchErrors(keyword string, limit int) (string, error) {
 		limit = 16
 	}
 
-	configDir, err := utils.GetConfigDir("errors")
-	if err != nil {
-		return "", fmt.Errorf("utils.GetConfigDir: %w", err)
-	}
+	// configDir, err := utils.GetConfigDir("errors")
+	// if err != nil {
+	// 	return "", fmt.Errorf("utils.GetConfigDir: %w", err)
+	// }
 
-	index := getErrorList(configDir.Home)
+	index := getErrorList(filesystem.ErrorsDir)
 	if len(index) == 0 {
 		return "NONE", nil
 	}
@@ -56,7 +55,7 @@ func SearchErrors(keyword string, limit int) (string, error) {
 	lower := strings.ToLower(keyword)
 	var matched []ErrorMemory
 	for tool := range index {
-		jsonPath := filepath.Join(configDir.Home, tool+".json")
+		jsonPath := filepath.Join(filesystem.ErrorsDir, tool+".json")
 		records := getErrorMemory(jsonPath)
 		for _, record := range records {
 			if matchErrorMemory(record, lower) {
@@ -128,17 +127,17 @@ func formatRecords(records []ErrorMemory, limit int) string {
 }
 
 func SaveErrorMemory(sessionID string, record ErrorMemory) (string, error) {
-	configDir, err := utils.GetConfigDir("errors")
-	if err != nil {
-		return "", fmt.Errorf("utils.GetConfigDir: %w", err)
-	}
+	// configDir, err := utils.GetConfigDir("errors")
+	// if err != nil {
+	// 	return "", fmt.Errorf("utils.GetConfigDir: %w", err)
+	// }
 
 	now := time.Now()
 	h := sha256.Sum256([]byte(record.ToolName + strconv.FormatInt(now.Unix(), 10)))
 	record.ID = hex.EncodeToString(h[:])
 	record.Timestamp = now.Unix()
 
-	jsonPath := filepath.Join(configDir.Home, record.ToolName+".json")
+	jsonPath := filepath.Join(filesystem.ErrorsDir, record.ToolName+".json")
 	records := getErrorMemory(jsonPath)
 	records = append(records, record)
 	data, err := json.Marshal(records)
@@ -149,12 +148,12 @@ func SaveErrorMemory(sessionID string, record ErrorMemory) (string, error) {
 		return "", fmt.Errorf("utils.WriteFile: %w", err)
 	}
 
-	index := getErrorList(configDir.Home)
+	index := getErrorList(filesystem.ErrorsDir)
 	index[record.ToolName] = ErrorMemoryItem{
 		Count:       len(records),
 		LastUpdated: now.Unix(),
 	}
-	writeErrorList(configDir.Home, index)
+	writeErrorList(filesystem.ErrorsDir, index)
 
 	return fmt.Sprintf("Remember the Error: %s", record.ID), nil
 }
@@ -195,12 +194,12 @@ func searchFile(toolName, keyword string, limit int) (string, error) {
 		limit = 16
 	}
 
-	configDir, err := utils.GetConfigDir("errors")
-	if err != nil {
-		return "", fmt.Errorf("utils.GetConfigDir: %w", err)
-	}
+	// configDir, err := utils.GetConfigDir("errors")
+	// if err != nil {
+	// 	return "", fmt.Errorf("utils.GetConfigDir: %w", err)
+	// }
 
-	jsonPath := filepath.Join(configDir.Home, toolName+".json")
+	jsonPath := filepath.Join(filesystem.ErrorsDir, toolName+".json")
 	records := getErrorMemory(jsonPath)
 	if len(records) == 0 {
 		return "NONE", nil

@@ -19,7 +19,6 @@ import (
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/utils"
 )
 
 //go:embed embed/stealth.js
@@ -63,9 +62,11 @@ func Load(href string) (string, error) {
 		return "", fmt.Errorf("href is required")
 	}
 
-	if dir, err := utils.GetConfigDir("tools", "browser", "5xx"); err == nil {
-		clean(dir.Home, skippedExpired)
-	}
+	cached5xx := filepath.Join(filesystem.ToolsDir, "browser", "5xx")
+	// if dir, err := utils.GetConfigDir("tools", "browser", "5xx"); err == nil {
+	// 	clean(dir.Home, skippedExpired)
+	// }
+	clean(cached5xx, skippedExpired)
 
 	if isSkipped(href) {
 		return skippedMessage(href), nil
@@ -73,13 +74,14 @@ func Load(href string) (string, error) {
 
 	hash := sha256.Sum256([]byte(href + "|text"))
 	cacheKey := hex.EncodeToString(hash[:])
-	configDir, err := utils.GetConfigDir("tools", "browser", "cached")
-	if err != nil {
-		return "", fmt.Errorf("utils.GetConfigDir: %w", err)
-	}
+	cached := filepath.Join(filesystem.ToolsDir, "browser", "cached")
+	// configDir, err := utils.GetConfigDir("tools", "browser", "cached")
+	// if err != nil {
+	// 	return "", fmt.Errorf("utils.GetConfigDir: %w", err)
+	// }
 
-	clean(configDir.Home, cacheExpired)
-	cachePath := filepath.Join(configDir.Home, cacheKey+".md")
+	clean(cached, cacheExpired)
+	cachePath := filepath.Join(cached, cacheKey+".md")
 	if _, err := os.Stat(cachePath); err == nil {
 		if cached, err := os.ReadFile(cachePath); err == nil {
 			return string(cached), nil
