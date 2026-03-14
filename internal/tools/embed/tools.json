@@ -233,7 +233,7 @@
     "type": "function",
     "function": {
       "name": "fetch_page",
-      "description": "使用 Chrome 瀏覽器開啟網頁，等待 JS 完整渲染後擷取主要內容，以純文字 Markdown 格式返回給 agent 閱讀。此工具不會寫入任何檔案，內容僅存在於 agent context 中。適合查詢、摘要、回答問題。若使用者目的是將網頁存到本地端（含「下載」、「儲存」、「存檔」等意圖），必須改用 download_page，不可使用此工具再搭配 write_file。",
+      "description": "使用 Chrome 瀏覽器開啟網頁，等待 JS 完整渲染後擷取主要內容，以純文字 Markdown 格式返回給 agent 閱讀。此工具不會寫入任何檔案，內容僅存在於 agent context 中。【適用情境】查詢、摘要、分析、爬取內容、回答問題、任何需要讀取網頁內容的任務。【禁止情境】使用者明確說「存檔」、「存到本地」、「儲存成檔案」、「下載到 xxx 路徑」時，改用 download_page。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -250,7 +250,7 @@
     "type": "function",
     "function": {
       "name": "download_page",
-      "description": "【下載/儲存網頁到本地端時使用此工具】使用 Chrome 瀏覽器取得完整網頁內容（含所有連結與圖片連結），直接寫入指定的本地檔案路徑，回傳寫入摘要。不需要再呼叫 write_file。只要使用者的意圖是將網頁「存到本地」、「下載」、「寫成檔案」，一律使用此工具而非 fetch_page。",
+      "description": "【嚴格限制：僅在使用者明確要求將網頁儲存到本地端檔案時使用】使用 Chrome 瀏覽器取得完整網頁內容，直接寫入指定的本地檔案路徑。觸發條件必須同時滿足：(1) 使用者明確提供或要求指定檔案路徑；(2) 意圖是永久保存到磁碟（「存成 xxx.md」、「儲存到 downloads/」、「下載到本地」）。若使用者只是要查看、摘要、分析、爬取內容，一律使用 fetch_page。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -369,8 +369,8 @@
   {
     "type": "function",
     "function": {
-      "name": "write_scheduler_script",
-      "description": "在 ~/.config/agenvoy/scheduler/scripts/ 建立腳本檔案（.sh 或 .py）。回傳值為實際儲存的檔名（含 UTC timestamp 後綴，例如 notify_1741569300.sh），必須將此回傳檔名傳給 add_onetime_task 的 script 參數。",
+      "name": "write_script",
+      "description": "在 ~/.config/agenvoy/scheduler/scripts/ 建立腳本檔案（.sh 或 .py）。回傳值為實際儲存的檔名（含 UTC timestamp 後綴，例如 notify_1741569300.sh），必須將此回傳檔名傳給 add_task 或 add_cron 的 script 參數。腳本須以 #!/bin/sh 或 #!/usr/bin/env python3 開頭。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -380,7 +380,7 @@
           },
           "content": {
             "type": "string",
-            "description": "腳本內容"
+            "description": "腳本內容，.sh 必須以 #!/bin/sh 開頭，.py 必須以 #!/usr/bin/env python3 開頭"
           }
         },
         "required": ["name", "content"]
@@ -390,8 +390,61 @@
   {
     "type": "function",
     "function": {
-      "name": "add_onetime_task",
-      "description": "設定一次性定時任務，到達指定時間時執行腳本，執行後自動從排程中移除。【必須先呼叫 write_scheduler_script，並將其回傳的實際檔名填入 script】若設定 discord_channel_id，腳本執行完畢後會將輸出結果自動傳送到該 Discord 頻道。",
+      "name": "add_cron",
+      "description": "新增重複性定時任務（recurring cron job）。使用標準 cron 表達式（`* * * * *`，依序為 分 時 日 月 週），每次到達排程時間即執行腳本。任務持久保存，重啟後仍會繼續執行。【必須先呼叫 write_script，將回傳的實際檔名填入 script】若設定 discord_channel_id，每次執行完畢後會將輸出傳送到指定 Discord 頻道。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cron_expr": {
+            "type": "string",
+            "description": "標準 cron 表達式，5 個欄位空格分隔：`{分} {時} {日} {月} {週}`。支援 `*`（任意）、`*/n`（每 n 單位）、`n`（精確值）、`n,m`（列舉）、`n-m`（範圍）。範例：`* * * * *`（每分鐘）、`0 9 * * 1`（每週一早上 9 點）、`*/5 * * * *`（每 5 分鐘）"
+          },
+          "script": {
+            "type": "string",
+            "description": "write_script 回傳的實際檔名（含 timestamp 後綴），例如 'backup_1741569300.sh'"
+          },
+          "channel_id": {
+            "type": "string",
+            "description": "（可選）每次執行完畢後要回傳結果的 Discord 頻道 ID"
+          }
+        },
+        "required": ["cron_expr", "script"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "remove_cron",
+      "description": "移除指定編號的重複性 cron 任務。流程：1. 先呼叫 list_crons；2. 若只有一個任務，直接移除；3. 若有多個任務，必須將列表回覆給使用者並詢問要移除哪一個，等待使用者明確指定後才呼叫此工具。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "description": "任務編號（由 list_crons 回傳的序號，從 1 開始）"
+          }
+        },
+        "required": ["index"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "list_crons",
+      "description": "列出所有目前啟用中的重複性 cron 任務，每行一筆，格式為 `{index}. {cron_expr} {script} [{channel_id}]`。index 為移除時所需的編號。",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "add_task",
+      "description": "設定一次性定時任務，到達指定時間時執行腳本，執行後自動從排程中移除並刪除對應腳本檔案。【必須先呼叫 write_script，並將其回傳的實際檔名填入 script】若設定 discord_channel_id，腳本執行完畢後會將輸出結果自動傳送到該 Discord 頻道。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -401,14 +454,42 @@
           },
           "script": {
             "type": "string",
-            "description": "write_scheduler_script 回傳的實際檔名（含 timestamp 後綴），例如 'open_pardn_io_1741569300.sh'"
+            "description": "write_script 回傳的實際檔名（含 timestamp 後綴），例如 'open_pardn_io_1741569300.sh'"
           },
-          "discord_channel_id": {
+          "channel_id": {
             "type": "string",
             "description": "（可選）腳本完成後要回傳結果的 Discord 頻道 ID。填入後，腳本的 stdout/stderr 輸出會自動送至該頻道。"
           }
         },
         "required": ["at", "script"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "list_tasks",
+      "description": "列出所有待執行的一次性定時任務，每行一筆，格式為 `{index}. {RFC3339_time} {script} [{channel_id}]`。index 為移除時所需的編號。",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "remove_task",
+      "description": "取消並移除指定編號的一次性定時任務，同時刪除對應的腳本檔案。流程：1. 先呼叫 list_tasks；2. 若只有一個任務，直接移除；3. 若有多個任務，必須將列表回覆給使用者並詢問要移除哪一個，等待使用者明確指定後才呼叫此工具。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "description": "任務編號（由 list_tasks 回傳的序號，從 1 開始）"
+          }
+        },
+        "required": ["index"]
       }
     }
   },

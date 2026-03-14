@@ -23,7 +23,7 @@ type deniedConfig struct {
 var DeniedConfig = func() deniedConfig {
 	var cfg deniedConfig
 	if err := json.Unmarshal(configs.DeniedMap, &cfg); err != nil {
-		slog.Warn("json.Unmarshal securityDenied.json",
+		slog.Warn("json.Unmarshal",
 			slog.String("error", err.Error()))
 	}
 	return cfg

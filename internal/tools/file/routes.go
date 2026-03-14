@@ -73,6 +73,16 @@ func Routes(e *toolTypes.Executor, name string, args json.RawMessage) (string, e
 		}
 		return write(e, params.Path, params.Content)
 
+	case "write_script":
+		var params struct {
+			Name    string `json:"name"`
+			Content string `json:"content"`
+		}
+		if err := json.Unmarshal(args, &params); err != nil {
+			return "", fmt.Errorf("json.Unmarshal: %w", err)
+		}
+		return writeScript(params.Name, params.Content)
+
 	case "patch_edit":
 		var params struct {
 			Path      string `json:"path"`

@@ -8,6 +8,7 @@ require (
 	github.com/go-shiori/go-readability v0.0.0-20251205110129-5db1dc9836f0
 	github.com/joho/godotenv v1.5.1
 	github.com/manifoldco/promptui v0.9.0
+	github.com/pardnchiu/go-scheduler v1.2.0
 	golang.org/x/net v0.50.0
 )
 
@@ -18,7 +19,6 @@ require (
 	github.com/go-shiori/dom v0.0.0-20230515143342-73569d674e1c // indirect
 	github.com/gogs/chardet v0.0.0-20211120154057-b7413eaefb8f // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
-	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/ysmood/fetchup v0.2.3 // indirect
 	github.com/ysmood/goob v0.4.0 // indirect
 	github.com/ysmood/got v0.40.0 // indirect

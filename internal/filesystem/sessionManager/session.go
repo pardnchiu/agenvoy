@@ -110,18 +110,35 @@ func GetDiscordSession(guildID, channelID, userID string) (string, error) {
 	return sessionID, nil
 }
 
+func GetChannelID(sessionID string) (string, error) {
+	if sessionID == "" {
+		return "", fmt.Errorf("sessionID is required")
+	}
+
+	configPath := filepath.Join(filesystem.SessionsDir, sessionID, "config.json")
+	bytes, err := os.ReadFile(configPath)
+	if err != nil {
+		return "", fmt.Errorf("os.ReadFile: %w", err)
+	}
+
+	var config map[string]string
+	if err := json.Unmarshal(bytes, &config); err != nil {
+		return "", fmt.Errorf("json.Unmarshal: %w", err)
+	}
+	return config["channel_id"], nil
+}
+
 var MaxHistoryMessages = 16
 
 func GetHistory(sessionID string) (old, max []agentTypes.Message) {
-	sessionDir := filepath.Join(filesystem.SessionsDir, sessionID)
-	historyPath := filepath.Join(sessionDir, "history.json")
-
-	data, err := os.ReadFile(historyPath)
+	historyPath := filepath.Join(filesystem.SessionsDir, sessionID, "history.json")
+	bytes, err := os.ReadFile(historyPath)
 	if err != nil {
 		return nil, nil
 	}
+
 	var oldHistory []agentTypes.Message
-	if err := json.Unmarshal(data, &oldHistory); err != nil {
+	if err := json.Unmarshal(bytes, &oldHistory); err != nil {
 		return nil, nil
 	}
 

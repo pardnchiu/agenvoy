@@ -269,8 +269,8 @@ agenvoy remove
 | `fetch_page` | `url` | JS-rendered page to Markdown (read-only) |
 | `download_page` | `href`, `save_to` | JS-rendered page saved to file |
 | `run_command` | `command` | Execute whitelisted shell commands |
-| `write_scheduler_script` | `name`, `content` | Create a scheduler script file |
-| `add_onetime_task` | `at`, `script` | Schedule a one-time task at a given time |
+| `write_script` | `name`, `content` | Create a scheduler script file |
+| `add_task` | `at`, `script` | Schedule a one-time task at a given time |
 | `calculate` | `expression` | Math expressions (sqrt, sin, cos, pow, etc.) |
 
 ### Tool Error Tracking

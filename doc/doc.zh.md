@@ -269,8 +269,8 @@ agenvoy remove
 | `fetch_page` | `url` | JS 渲染頁面轉 Markdown（唯讀） |
 | `download_page` | `href`, `save_to` | JS 渲染頁面儲存至檔案 |
 | `run_command` | `command` | 執行白名單內的 Shell 指令 |
-| `write_scheduler_script` | `name`, `content` | 建立排程腳本檔案 |
-| `add_onetime_task` | `at`, `script` | 設定一次性定時任務 |
+| `write_script` | `name`, `content` | 建立排程腳本檔案 |
+| `add_task` | `at`, `script` | 設定一次性定時任務 |
 | `calculate` | `expression` | 數學運算（sqrt、sin、cos、pow 等） |
 
 ### 工具執行錯誤追蹤

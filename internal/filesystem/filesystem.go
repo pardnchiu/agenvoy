@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -17,6 +18,7 @@ var (
 	ErrorsDir    string
 	SchedulerDir string
 	TasksPath    string
+	CronsPath    string
 	ScriptsDir   string
 	SkillsDir    string
 	ToolsDir     string
@@ -50,6 +52,7 @@ func Init() error {
 		ErrorsDir = filepath.Join(AgenvoyDir, "errors")
 		SchedulerDir = filepath.Join(AgenvoyDir, "scheduler")
 		TasksPath = filepath.Join(SchedulerDir, "tasks")
+		CronsPath = filepath.Join(SchedulerDir, "crons")
 		ScriptsDir = filepath.Join(SchedulerDir, "scripts")
 
 		SkillsDir = filepath.Join(AgenvoyDir, "skills")
@@ -102,4 +105,12 @@ func WriteFile(path, content string, permission os.FileMode) error {
 		return fmt.Errorf("os.Rename: %w", err)
 	}
 	return nil
+}
+
+func WriteFileWithLines(path string, lines []string, permission os.FileMode) error {
+	content := strings.Join(lines, "\n")
+	if len(lines) > 0 {
+		content += "\n"
+	}
+	return WriteFile(path, content, permission)
 }

@@ -16,8 +16,8 @@ import (
 	"github.com/pardnchiu/agenvoy/internal/tools/apis/searchWeb"
 	"github.com/pardnchiu/agenvoy/internal/tools/browser"
 	"github.com/pardnchiu/agenvoy/internal/tools/calculator"
-	"github.com/pardnchiu/agenvoy/internal/tools/cron"
 	"github.com/pardnchiu/agenvoy/internal/tools/file"
+	"github.com/pardnchiu/agenvoy/internal/tools/schedulerTools"
 	toolTypes "github.com/pardnchiu/agenvoy/internal/tools/types"
 )
 
@@ -108,11 +108,17 @@ func Execute(ctx context.Context, e *toolTypes.Executor, name string, args json.
 	}
 
 	switch name {
-	case "read_file", "list_files", "glob_files", "search_content", "search_history", "write_file", "patch_edit", "get_tool_error", "remember_error", "search_errors":
+	case "read_file", "list_files", "glob_files", "search_content", "search_history", "write_file", "write_script", "patch_edit", "get_tool_error", "remember_error", "search_errors":
 		return file.Routes(e, name, args)
 
 	case "send_http_request", "fetch_google_rss":
 		return apis.Routes(e, name, args)
+
+	case "add_cron", "list_crons", "remove_cron":
+		return schedulerTools.Routes(e, name, args)
+
+	case "add_task", "list_tasks", "remove_task":
+		return schedulerTools.TaskRoutes(e, name, args)
 
 	case "run_command":
 		var params struct {
@@ -151,27 +157,6 @@ func Execute(ctx context.Context, e *toolTypes.Executor, name string, args json.
 			return "", fmt.Errorf("failed to unmarshal json (%s): %w", name, err)
 		}
 		return searchWeb.Search(ctx, params.Query, searchWeb.TimeRange(params.Range))
-
-	case "write_scheduler_script":
-		var params struct {
-			Name    string `json:"name"`
-			Content string `json:"content"`
-		}
-		if err := json.Unmarshal(args, &params); err != nil {
-			return "", fmt.Errorf("json.Unmarshal: %w", err)
-		}
-		return cron.WriteScript(params.Name, params.Content)
-
-	case "add_onetime_task":
-		var params struct {
-			At        string `json:"at"`
-			Script    string `json:"script"`
-			ChannelID string `json:"discord_channel_id"`
-		}
-		if err := json.Unmarshal(args, &params); err != nil {
-			return "", fmt.Errorf("json.Unmarshal: %w", err)
-		}
-		return cron.AddOneTimeTask(params.At, params.Script, params.ChannelID)
 
 	case "calculate":
 		var params struct {
