@@ -64,15 +64,7 @@ func Execute(ctx context.Context, data ExecData, session *agentTypes.AgentSessio
 		}
 
 		if len(resp.Choices) == 0 {
-			emptyCount++
-			if emptyCount >= MaxEmptyResponses {
-				events <- agentTypes.Event{
-					Type: agentTypes.EventText,
-					Text: "工具無法取得資料，請稍後再試或改用其他方式查詢。",
-				}
-				events <- agentTypes.Event{
-					Type: agentTypes.EventDone,
-				}
+			if actionError(&emptyCount, events) {
 				return nil
 			}
 			continue
@@ -92,12 +84,20 @@ func Execute(ctx context.Context, data ExecData, session *agentTypes.AgentSessio
 		case string:
 			text := value
 			if text == "" {
-				text = "工具無法取得資料，請稍後再試或改用其他方式查詢。"
+				if actionError(&emptyCount, events) {
+					return nil
+				}
+				continue
 			}
+
 			cleaned := extractSummary(session.ID, text)
 			if cleaned == "" {
-				cleaned = "工具無法取得資料，請稍後再試或改用其他方式查詢。"
+				if actionError(&emptyCount, events) {
+					return nil
+				}
+				continue
 			}
+			emptyCount = 0
 
 			events <- agentTypes.Event{
 				Type: agentTypes.EventText,
@@ -105,7 +105,6 @@ func Execute(ctx context.Context, data ExecData, session *agentTypes.AgentSessio
 			}
 
 			choice.Message.Content = fmt.Sprintf("---\n當前時間: %s\n---\n%s", time.Now().Format("2006-01-02 15:04:05"), cleaned)
-
 			session.Messages = append(session.Messages, choice.Message)
 
 			if err := saveNewHistory(choice, session); err != nil {
@@ -114,10 +113,10 @@ func Execute(ctx context.Context, data ExecData, session *agentTypes.AgentSessio
 			}
 
 		case nil:
-			events <- agentTypes.Event{
-				Type: agentTypes.EventText,
-				Text: "工具無法取得資料，請稍後再試或改用其他方式查詢。",
+			if actionError(&emptyCount, events) {
+				return nil
 			}
+			continue
 
 		default:
 			return fmt.Errorf("unexpected content type: %T", choice.Message.Content)
@@ -183,6 +182,19 @@ func GetSystemPrompt(data ExecData) string {
 		"{{.SkillExt}}", skillExt,
 		"{{.Content}}", content,
 	).Replace(configs.SystemPrompt)
+}
+
+func actionError(emptyCount *int, events chan<- agentTypes.Event) bool {
+	*emptyCount++
+	if *emptyCount >= MaxEmptyResponses {
+		events <- agentTypes.Event{
+			Type: agentTypes.EventText,
+			Text: "工具無法取得資料，請稍後再試或改用其他方式查詢。",
+		}
+		events <- agentTypes.Event{Type: agentTypes.EventDone}
+		return true
+	}
+	return false
 }
 
 func saveNewHistory(choice agentTypes.OutputChoices, session *agentTypes.AgentSession) error {
