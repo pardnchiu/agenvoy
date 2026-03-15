@@ -236,6 +236,7 @@ agenvoy remove
 |------|------|------|
 | `add` | `agenvoy add` | 互動式新增 AI Provider 設定 |
 | `remove` | `agenvoy remove` | 移除已設定的 Provider |
+| `planner` | `agenvoy planner` | 設定 Planner（路由器）模型 |
 | `list` | `agenvoy list [skills]` | 列出已設定的模型或可用 Skill |
 | `run` | `agenvoy run <input...> [flags]` | 以互動確認模式執行 Agentic 工作流 |
 | `run-allow` | `agenvoy run-allow <input...> [flags]` | 自動批准所有 Tool Call |
@@ -256,31 +257,30 @@ agenvoy remove
 | `list_files` | `path`, `recursive` | 列出目錄內容 |
 | `glob_files` | `pattern` | Glob 模式比對（如 `**/*.go`） |
 | `search_content` | `pattern`, `file_pattern` | Regex 搜尋檔案內容 |
-| `patch_edit` | `path`, `old_string`, `new_string` | 字串替換編輯 |
-| `search_history` | `keyword`, `time_range` | 查詢 Session 歷史記錄 |
+| `patch_edit` | `path`, `old_string`, `new_string` | 第一個匹配項字串替換（比全檔覆寫更安全） |
+| `search_history` | `keyword`, `time_range` | 查詢當前 Session 歷史記錄 |
 | `get_tool_error` | `hash` | 透過 hash 取得失敗工具呼叫的完整錯誤詳情 |
-| `remember_error` | `tool_name`, `keywords`, `symptom`, `action` | 儲存工具錯誤決策 |
+| `remember_error` | `tool_name`, `keywords`, `symptom`, `action` | 儲存工具錯誤決策至知識庫 |
 | `search_errors` | `keyword` | 檢索錯誤知識庫 |
-| `fetch_yahoo_finance` | `symbol`, `interval`, `range` | 股票數據 |
-| `fetch_google_rss` | `keyword`, `time`, `lang` | Google 新聞 RSS |
+| `fetch_google_rss` | `keyword`, `time`, `lang` | Google 新聞 RSS（含去重） |
 | `send_http_request` | `method`, `url`, `headers`, `body` | 通用 HTTP 請求 |
-| `fetch_weather` | `city`, `days`, `hourly_interval` | 天氣資訊 |
-| `search_web` | `query`, `time_range` | 網頁搜尋 |
-| `fetch_page` | `url` | JS 渲染頁面轉 Markdown（唯讀） |
-| `download_page` | `href`, `save_to` | JS 渲染頁面儲存至檔案 |
-| `run_command` | `command` | 執行白名單內的 Shell 指令 |
-| `write_script` | `name`, `content` | 建立排程腳本檔案 |
+| `search_web` | `query`, `time_range` | 並行網頁搜尋（Google + DuckDuckGo） |
+| `fetch_page` | `url` | 無頭 Chrome 渲染頁面轉 Markdown（唯讀） |
+| `download_page` | `href`, `save_to` | JS 渲染頁面儲存至本地檔案 |
+| `run_command` | `command` | 執行白名單內的 Shell 指令（300 秒逾時） |
+| `write_script` | `name`, `content` | 在排程器目錄建立 `.sh` 或 `.py` 腳本 |
 | `add_task` | `at`, `script`, `channel_id` | 設定一次性定時任務；執行結果傳送至指定 Discord 頻道 |
 | `list_tasks` | — | 列出所有待執行的一次性任務 |
-| `remove_task` | `index` | 依序號移除一次性任務（多個時須先列出） |
-| `add_cron` | `cron_expr`, `script`, `channel_id` | 新增週期性 Cron 任務；執行結果傳送至指定 Discord 頻道 |
+| `remove_task` | `index` | 依序號取消一次性任務（多個時須先列出） |
+| `add_cron` | `cron_expr`, `script`, `channel_id` | 新增週期性 Cron 任務；每次執行結果傳送至指定 Discord 頻道 |
 | `list_crons` | — | 列出所有已登錄的 Cron 任務 |
 | `remove_cron` | `index` | 依序號移除 Cron 任務（多個時須先列出） |
-| `calculate` | `expression` | 數學運算（sqrt、sin、cos、pow 等） |
+| `list_tools` | — | 列出所有可用工具，含動態載入的 API Extension |
+| `calculate` | `expression` | 數學運算（sqrt、abs、pow、ceil、floor、sin、cos、tan、log） |
 
 ### 工具執行錯誤追蹤
 
-任何工具呼叫失敗時，錯誤會持久化至 Session 目錄的 `tool_errors/{date}/{hash}.json`，Agent 收到 `no data: {hash}` 作為結果。Agent 可呼叫 `get_tool_error` 帶入 8 位元 hex hash 取得完整錯誤資訊（tool 名稱、參數、錯誤訊息）。錯誤同時透過 `EventExecError` 事件即時通知：CLI 模式輸出至 stderr，Discord 模式附加於回覆頁尾。
+任何工具呼叫失敗時，錯誤持久化至 Session 目錄的 `tool_errors/{hash}.json`，Agent 收到 `no data: {hash}` 作為結果。Agent 可呼叫 `get_tool_error` 帶入 8 位元 hex hash 取得完整錯誤資訊（tool 名稱、參數、錯誤訊息）。錯誤同時透過 `EventExecError` 事件即時通知：CLI 模式輸出至 stderr，Discord 模式附加於回覆頁尾。
 
 ### Agent 介面
 
@@ -311,6 +311,9 @@ func InputBytes(provider, model string) int
 
 // 取得最大輸出 Token 數
 func OutputTokens(provider, model string) int
+
+// 確認該模型是否支援 temperature 參數
+func SupportTemperature(provider, model string) bool
 ```
 
 ***

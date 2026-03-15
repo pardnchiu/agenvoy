@@ -236,6 +236,7 @@ agenvoy remove
 |---------|--------|-------------|
 | `add` | `agenvoy add` | Interactively register an AI provider |
 | `remove` | `agenvoy remove` | Remove a configured provider |
+| `planner` | `agenvoy planner` | Set the planner (router) model |
 | `list` | `agenvoy list [skills]` | List configured models or available skills |
 | `run` | `agenvoy run <input...> [flags]` | Execute agentic workflow with interactive confirmation |
 | `run-allow` | `agenvoy run-allow <input...> [flags]` | Execute with all tool calls auto-approved |
@@ -256,31 +257,30 @@ agenvoy remove
 | `list_files` | `path`, `recursive` | List directory contents |
 | `glob_files` | `pattern` | Glob pattern matching (e.g., `**/*.go`) |
 | `search_content` | `pattern`, `file_pattern` | Regex search across file contents |
-| `patch_edit` | `path`, `old_string`, `new_string` | String replace editing |
-| `search_history` | `keyword`, `time_range` | Query session history records |
+| `patch_edit` | `path`, `old_string`, `new_string` | First-match string replace (safer than full rewrite) |
+| `search_history` | `keyword`, `time_range` | Query current session history records |
 | `get_tool_error` | `hash` | Retrieve full error details for a failed tool call by hash |
-| `remember_error` | `tool_name`, `keywords`, `symptom`, `action` | Store tool error decisions |
-| `search_errors` | `keyword` | Retrieve error knowledge base |
-| `fetch_yahoo_finance` | `symbol`, `interval`, `range` | Stock market data |
-| `fetch_google_rss` | `keyword`, `time`, `lang` | Google News RSS feed |
+| `remember_error` | `tool_name`, `keywords`, `symptom`, `action` | Persist tool error decisions to error knowledge base |
+| `search_errors` | `keyword` | Retrieve error knowledge base entries |
+| `fetch_google_rss` | `keyword`, `time`, `lang` | Google News RSS feed with deduplication |
 | `send_http_request` | `method`, `url`, `headers`, `body` | Generic HTTP request |
-| `fetch_weather` | `city`, `days`, `hourly_interval` | Weather information |
-| `search_web` | `query`, `time_range` | Web search |
-| `fetch_page` | `url` | JS-rendered page to Markdown (read-only) |
-| `download_page` | `href`, `save_to` | JS-rendered page saved to file |
-| `run_command` | `command` | Execute whitelisted shell commands |
-| `write_script` | `name`, `content` | Create a scheduler script file |
-| `add_task` | `at`, `script`, `channel_id` | Schedule a one-time task; result is delivered to the given Discord channel |
+| `search_web` | `query`, `time_range` | Concurrent web search (Google + DuckDuckGo) |
+| `fetch_page` | `url` | JS-rendered page content as Markdown (headless Chrome) |
+| `download_page` | `href`, `save_to` | JS-rendered page saved to a local file |
+| `run_command` | `command` | Execute whitelisted shell commands (300s timeout) |
+| `write_script` | `name`, `content` | Create a `.sh` or `.py` script under the scheduler directory |
+| `add_task` | `at`, `script`, `channel_id` | Schedule a one-time task; result is posted to the Discord channel on completion |
 | `list_tasks` | — | List all pending one-time tasks |
-| `remove_task` | `index` | Remove a one-time task by index (list first if multiple exist) |
-| `add_cron` | `cron_expr`, `script`, `channel_id` | Register a recurring cron task; result is delivered to the given Discord channel |
+| `remove_task` | `index` | Cancel and remove a one-time task (list first if multiple) |
+| `add_cron` | `cron_expr`, `script`, `channel_id` | Register a recurring cron task; result is posted to the Discord channel after each run |
 | `list_crons` | — | List all registered cron tasks |
-| `remove_cron` | `index` | Remove a cron task by index (list first if multiple exist) |
-| `calculate` | `expression` | Math expressions (sqrt, sin, cos, pow, etc.) |
+| `remove_cron` | `index` | Remove a cron task by index (list first if multiple) |
+| `list_tools` | — | List all currently available tools including dynamic API extensions |
+| `calculate` | `expression` | Evaluate math expressions (sqrt, abs, pow, ceil, floor, sin, cos, tan, log) |
 
 ### Tool Error Tracking
 
-When any tool call fails, the error is persisted to `tool_errors/{date}/{hash}.json` within the session directory and the agent receives `no data: {hash}`. The agent can call `get_tool_error` with the 8-character hex hash to retrieve the full error context (tool name, arguments, error message). Errors are also sent immediately via `EventExecError`: written to stderr in CLI mode, appended as a footer in Discord replies.
+When any tool call fails, the error is persisted to `tool_errors/{hash}.json` within the session directory and the agent receives `no data: {hash}`. The agent can call `get_tool_error` with the 8-character hex hash to retrieve the full error context (tool name, arguments, error message). Errors are also sent immediately via `EventExecError`: written to stderr in CLI mode, appended as a footer in Discord replies.
 
 ### Agent Interface
 
@@ -311,6 +311,9 @@ func InputBytes(provider, model string) int
 
 // Get max output token count
 func OutputTokens(provider, model string) int
+
+// Whether the model supports the temperature parameter
+func SupportTemperature(provider, model string) bool
 ```
 
 ***
