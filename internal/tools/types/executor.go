@@ -3,13 +3,13 @@ package toolTypes
 import (
 	"encoding/json"
 
-	"github.com/pardnchiu/agenvoy/internal/tools/apiAdapter"
+	apiAdapter "github.com/pardnchiu/agenvoy/internal/tools/apis/adapter"
 )
 
 type Executor struct {
 	WorkPath       string
 	SessionID      string
-	Allowed        []string // limit to these folders to use
+	Allowed        []string // * limit to these folders to use
 	AllowedCommand map[string]bool
 	Exclude        []Exclude
 	Tools          []Tool

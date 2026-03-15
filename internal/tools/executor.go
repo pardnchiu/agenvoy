@@ -11,13 +11,9 @@ import (
 	"github.com/pardnchiu/agenvoy/configs"
 	"github.com/pardnchiu/agenvoy/extensions"
 	"github.com/pardnchiu/agenvoy/internal/filesystem"
-	"github.com/pardnchiu/agenvoy/internal/tools/apiAdapter"
-	"github.com/pardnchiu/agenvoy/internal/tools/apis"
-	"github.com/pardnchiu/agenvoy/internal/tools/apis/searchWeb"
-	"github.com/pardnchiu/agenvoy/internal/tools/browser"
-	"github.com/pardnchiu/agenvoy/internal/tools/calculator"
+	apiAdapter "github.com/pardnchiu/agenvoy/internal/tools/apis/adapter"
 	"github.com/pardnchiu/agenvoy/internal/tools/file"
-	"github.com/pardnchiu/agenvoy/internal/tools/schedulerTools"
+	toolRegister "github.com/pardnchiu/agenvoy/internal/tools/register"
 	toolTypes "github.com/pardnchiu/agenvoy/internal/tools/types"
 )
 
@@ -98,7 +94,6 @@ func normalizeArgs(args json.RawMessage) json.RawMessage {
 
 func Execute(ctx context.Context, e *toolTypes.Executor, name string, args json.RawMessage) (string, error) {
 	args = normalizeArgs(args)
-	// * get all api tools
 	if strings.HasPrefix(name, "api_") && e.APIToolbox != nil && e.APIToolbox.IsExist(name) {
 		var params map[string]any
 		if err := json.Unmarshal(args, &params); err != nil {
@@ -106,68 +101,5 @@ func Execute(ctx context.Context, e *toolTypes.Executor, name string, args json.
 		}
 		return e.APIToolbox.Execute(name, params)
 	}
-
-	switch name {
-	case "read_file", "list_files", "glob_files", "search_content", "search_history", "write_file", "write_script", "patch_edit", "get_tool_error", "remember_error", "search_errors":
-		return file.Routes(e, name, args)
-
-	case "send_http_request", "fetch_google_rss":
-		return apis.Routes(e, name, args)
-
-	case "add_cron", "list_crons", "remove_cron":
-		return schedulerTools.Routes(e, name, args)
-
-	case "add_task", "list_tasks", "remove_task":
-		return schedulerTools.TaskRoutes(e, name, args)
-
-	case "run_command":
-		var params struct {
-			Command string `json:"command"`
-		}
-		if err := json.Unmarshal(args, &params); err != nil {
-			return "", fmt.Errorf("json.Unmarshal: %w", err)
-		}
-		return runCommand(ctx, e, params.Command)
-
-	case "fetch_page":
-		var params struct {
-			URL string `json:"url"`
-		}
-		if err := json.Unmarshal(args, &params); err != nil {
-			return "", fmt.Errorf("failed to unmarshal json (%s): %w", name, err)
-		}
-		return browser.Load(params.URL)
-
-	case "download_page":
-		var params struct {
-			Href   string `json:"href"`
-			SaveTo string `json:"save_to"`
-		}
-		if err := json.Unmarshal(args, &params); err != nil {
-			return "", fmt.Errorf("failed to unmarshal json (%s): %w", name, err)
-		}
-		return browser.Download(params.Href, params.SaveTo)
-
-	case "search_web":
-		var params struct {
-			Query string `json:"query"`
-			Range string `json:"range"`
-		}
-		if err := json.Unmarshal(args, &params); err != nil {
-			return "", fmt.Errorf("failed to unmarshal json (%s): %w", name, err)
-		}
-		return searchWeb.Search(ctx, params.Query, searchWeb.TimeRange(params.Range))
-
-	case "calculate":
-		var params struct {
-			Expression string `json:"expression"`
-		}
-		if err := json.Unmarshal(args, &params); err != nil {
-			return "", fmt.Errorf("json.Unmarshal: %w", err)
-		}
-		return calculator.Calc(params.Expression)
-
-	default:
-		return "", fmt.Errorf("unknown tool: %s", name)
-	}
+	return toolRegister.Dispatch(ctx, e, name, args)
 }

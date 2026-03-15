@@ -1,17 +1,18 @@
 package apis
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
-	"github.com/pardnchiu/agenvoy/internal/tools/apiAdapter"
-	"github.com/pardnchiu/agenvoy/internal/tools/apis/googleRSS"
+	apiAdapter "github.com/pardnchiu/agenvoy/internal/tools/apis/adapter"
+	toolRegister "github.com/pardnchiu/agenvoy/internal/tools/register"
 	toolTypes "github.com/pardnchiu/agenvoy/internal/tools/types"
 )
 
-func Routes(e *toolTypes.Executor, name string, args json.RawMessage) (string, error) {
-	switch name {
-	case "send_http_request":
+func init() {
+	// * api adapter
+	toolRegister.Register("send_http_request", func(ctx context.Context, e *toolTypes.Executor, args json.RawMessage) (string, error) {
 		var params struct {
 			URL         string            `json:"url"`
 			Method      string            `json:"method"`
@@ -24,19 +25,5 @@ func Routes(e *toolTypes.Executor, name string, args json.RawMessage) (string, e
 			return "", fmt.Errorf("json.Unmarshal: %w", err)
 		}
 		return apiAdapter.Send(params.URL, params.Method, params.Headers, params.Body, params.ContentType, params.Timeout)
-
-	case "fetch_google_rss":
-		var params struct {
-			Keyword string `json:"keyword"`
-			Time    string `json:"time"`
-			Lang    string `json:"lang"`
-		}
-		if err := json.Unmarshal(args, &params); err != nil {
-			return "", fmt.Errorf("json.Unmarshal: %w", err)
-		}
-		return googleRSS.Fetch(params.Keyword, params.Time, params.Lang)
-
-	default:
-		return "", fmt.Errorf("unknown tool: %s", name)
-	}
+	})
 }
