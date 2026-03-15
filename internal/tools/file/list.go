@@ -11,10 +11,12 @@ import (
 )
 
 func list(e *toolTypes.Executor, path string, recursive bool) (string, error) {
-	fullPath := getFullPath(e, path)
+	fullPath, err := getFullPath(e, path)
+	if err != nil {
+		return "", err
+	}
 
 	var files []string
-	var err error
 	if recursive {
 		files, err = walkFiles(e, fullPath)
 	} else {

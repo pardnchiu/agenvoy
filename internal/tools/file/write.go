@@ -16,7 +16,10 @@ func write(e *toolTypes.Executor, path, content string) (string, error) {
 		return "", fmt.Errorf("refused to write empty content to file (%s)", path)
 	}
 
-	fullPath := getFullPath(e, path)
+	fullPath, err := getFullPath(e, path)
+	if err != nil {
+		return "", err
+	}
 
 	dir := filepath.Dir(fullPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {

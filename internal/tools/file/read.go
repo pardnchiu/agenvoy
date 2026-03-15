@@ -57,7 +57,10 @@ func isDenied(path string) bool {
 }
 
 func read(e *toolTypes.Executor, path string) (string, error) {
-	fullPath := getFullPath(e, path)
+	fullPath, err := getFullPath(e, path)
+	if err != nil {
+		return "", err
+	}
 
 	if isDenied(fullPath) {
 		return "", fmt.Errorf("access denied: %s", path)
@@ -74,11 +77,16 @@ func read(e *toolTypes.Executor, path string) (string, error) {
 	return string(data), nil
 }
 
-func getFullPath(e *toolTypes.Executor, path string) string {
-	if filepath.IsAbs(path) {
-		return path
+func getFullPath(e *toolTypes.Executor, path string) (string, error) {
+	if !filepath.IsAbs(path) {
+		return filepath.Join(e.WorkPath, path), nil
 	}
-	return filepath.Join(e.WorkPath, path)
+	cleaned := filepath.Clean(path)
+	homeDir, err := os.UserHomeDir()
+	if err != nil || !strings.HasPrefix(cleaned, filepath.Clean(homeDir)+string(filepath.Separator)) {
+		return "", fmt.Errorf("only allow user home: %s", path)
+	}
+	return cleaned, nil
 }
 
 func isExclude(e *toolTypes.Executor, path string) bool {

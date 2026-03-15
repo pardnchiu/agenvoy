@@ -10,7 +10,10 @@ import (
 )
 
 func patch(e *toolTypes.Executor, path, oldString, newString string) (string, error) {
-	fullPath := getFullPath(e, path)
+	fullPath, err := getFullPath(e, path)
+	if err != nil {
+		return "", err
+	}
 
 	if isExclude(e, fullPath) {
 		return "", fmt.Errorf("path is excluded: %s", path)
